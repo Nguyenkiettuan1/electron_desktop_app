@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Test Automation Screen Auto - URL Detector",
+  "version": "1.0.0",
+  "description": "Detects current URL for Test Automation Screen Auto app",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Get Current URL"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://*/*",
+    "http://*/*"
+  ]
+}

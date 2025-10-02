@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🚀 Test Automation Screen Auto - Desktop App</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="header-content">
+          <h1>🚀 Test Automation Screen Auto</h1>
+          <div class="header-actions">
+            <button id="minimize-btn" class="header-btn">−</button>
+            <button id="maximize-btn" class="header-btn">□</button>
+            <button id="close-btn" class="header-btn">×</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="app-main">
+        <!-- Login Section -->
+        <div id="login-section" class="section">
+          <div class="login-container">
+            <h2>🔐 Login</h2>
+            <form id="login-form" class="login-form">
+              <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" required />
+              </div>
+              <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required />
+              </div>
+              <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Main Interface -->
+        <div id="main-interface" class="section hidden">
+          <!-- User Info -->
+          <div class="user-info">
+            <h3>👤 Welcome, <span id="user-name"></span></h3>
+            <button id="logout-btn" class="btn btn-secondary">Logout</button>
+          </div>
+
+          <!-- Workflow Steps -->
+          <div class="workflow-container">
+            <!-- Step 1: Session Setup -->
+            <div class="workflow-step">
+              <div class="step-header">
+                <h3>🎯 Step 1: Start Session</h3>
+                <div class="step-status" id="session-status">Not Started</div>
+              </div>
+              <div class="step-content">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="region">Region</label>
+                    <div class="region-container">
+                      <input
+                        type="text"
+                        id="region"
+                        class="form-control"
+                        placeholder="Search or select region..."
+                        autocomplete="off"
+                      />
+                      <div id="region-dropdown" class="region-dropdown hidden">
+                        <div id="region-options"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="sport">Sport</label>
+                    <div class="sport-container">
+                      <input
+                        type="text"
+                        id="sport"
+                        class="form-control"
+                        placeholder="Search or select sport..."
+                        autocomplete="off"
+                      />
+                      <div id="sport-dropdown" class="sport-dropdown hidden">
+                        <div id="sport-options"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button id="start-session-btn" class="btn btn-success">
+                  Start Session
+                </button>
+                <button id="stop-session-btn" class="btn btn-danger hidden">
+                  Stop Session
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 2: Screenshot -->
+            <div class="workflow-step">
+              <div class="step-header">
+                <h3>📸 Step 2: Take Screenshot</h3>
+                <div class="step-status" id="screenshot-status">Ready</div>
+              </div>
+              <div class="step-content">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="signal">Signal</label>
+                    <div class="signal-container">
+                      <input
+                        type="text"
+                        id="signal"
+                        class="form-control"
+                        placeholder="Search or select signal..."
+                        autocomplete="off"
+                      />
+                      <div id="signal-dropdown" class="signal-dropdown hidden">
+                        <div id="signal-options"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="url">URL</label>
+                    <input
+                      type="text"
+                      id="url"
+                      class="form-control"
+                      placeholder="Auto-detected or manual"
+                    />
+                    <button id="detect-url-btn" class="btn btn-secondary">
+                      Auto Detect
+                    </button>
+                    <button id="detect-clipboard-btn" class="btn btn-info">
+                      From Clipboard
+                    </button>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="bucket-name">📁 Storage Folder</label>
+                    <input
+                      type="text"
+                      id="bucket-name"
+                      class="form-control"
+                      placeholder="e.g., b1, b1/b2, match_20241201"
+                    />
+                    <small class="form-help">
+                      💡 <strong>Hướng dẫn:</strong><br />
+                      • <code>b1</code> → file lưu trong folder b1<br />
+                      • <code>b1/b2</code> → file lưu trong folder b2 (bên trong
+                      b1)<br />
+                      • <code>match_20241201</code> → file lưu trong folder
+                      match_20241201<br />
+                      • <strong>Mặc định:</strong> tên_trận_YYYYMMDD
+                    </small>
+                  </div>
+                </div>
+                <div class="screenshot-actions">
+                  <button id="take-screenshot-btn" class="btn btn-primary">
+                    📸 Take Screenshot (Ctrl+Alt+S)
+                  </button>
+                  <button id="upload-btn" class="btn btn-success hidden">
+                    ⬆️ Upload
+                  </button>
+                  <button id="cancel-btn" class="btn btn-danger hidden">
+                    ❌ Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screenshot Preview -->
+          <div id="screenshot-preview" class="screenshot-preview hidden">
+            <h3> Screenshot Preview</h3>
+            <div class="preview-container">
+              <img id="screenshot-image" alt="Screenshot Preview" />
+            </div>
+            <div class="preview-actions">
+              <button id="confirm-upload-btn" class="btn btn-success">
+                 Upload Screenshot
+              </button>
+              <button id="cancel-upload-btn" class="btn btn-danger">
+                ❌ Cancel
+              </button>
+            </div>
+          </div>
+
+          <!-- Screenshot Popup Modal -->
+          <div id="screenshot-popup" class="screenshot-popup hidden">
+            <div class="popup-overlay"></div>
+            <div class="popup-content">
+              <div class="popup-header">
+                <h3>📸 Screenshot Ready</h3>
+                <button id="popup-close-btn" class="popup-close">×</button>
+              </div>
+              <div class="popup-body">
+                <div class="screenshot-info">
+                  <div class="info-item">
+                    <label>📁 Filename:</label>
+                    <span id="popup-filename">screenshot_2025-09-24.png</span>
+                  </div>
+                  <div class="info-item">
+                    <label>URL:</label>
+                    <span id="popup-url">https://example.com</span>
+                  </div>
+                  <div class="info-item">
+                    <label>⏰ Time:</label>
+                    <span id="popup-time">2025-09-24 15:07:40</span>
+                  </div>
+                </div>
+                <div class="screenshot-preview-small">
+                  <img id="popup-screenshot-image" alt="Screenshot Preview" />
+                </div>
+                <div class="signal-selection">
+                  <label for="popup-signal">📡 Select Signal:</label>
+                  <div class="popup-signal-container">
+                    <input
+                      type="text"
+                      id="popup-signal"
+                      class="form-control"
+                      placeholder="Search or select signal..."
+                      autocomplete="off"
+                    />
+                    <div
+                      id="popup-signal-dropdown"
+                      class="popup-signal-dropdown hidden"
+                    >
+                      <div id="popup-signal-options"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="popup-actions">
+                <button id="popup-ok-btn" class="btn btn-success">
+                   Upload Screenshot
+                </button>
+                <button id="popup-cancel-btn" class="btn btn-danger">
+                  ❌ Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Status Bar -->
+      <footer class="app-footer">
+        <div class="status-info">
+          <span id="status-text">Ready</span>
+          <span id="hotkey-info"
+            >Ctrl+Alt+S: Screenshot | Ctrl+Alt+U: Detect URL</span
+          >
+        </div>
+      </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <div id="loading-text">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Upload Queue -->
+    <div id="upload-queue" class="upload-queue hidden">
+      <div class="queue-header">
+        <h3>📤 Upload Queue</h3>
+        <button id="queue-toggle" class="queue-toggle">−</button>
+      </div>
+      <div id="queue-content" class="queue-content">
+        <div id="queue-items"></div>
+      </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification hidden">
+      <div class="notification-content">
+        <span id="notification-text"></span>
+        <button id="notification-close">×</button>
+      </div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
