@@ -1,0 +1,30 @@
+{
+    "appId": "com.testautomation.screenauto",
+    "productName": "Test Automation Screen Auto",
+    "directories": {
+        "output": "dist"
+    },
+    "files": [
+        "**/*",
+        "!node_modules/**/*",
+        "!screenshots/**/*",
+        "!__pycache__/**/*",
+        "!*.log",
+        "!dist/**/*",
+        "!.env",
+        "!env.example"
+    ],
+    "win": {
+        "target": "portable",
+        "sign": false,
+        "verifyUpdateCodeSignature": false,
+        "requestedExecutionLevel": "asInvoker",
+        "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "mac": {
+        "target": "dmg"
+    },
+    "linux": {
+        "target": "AppImage"
+    }
+}
