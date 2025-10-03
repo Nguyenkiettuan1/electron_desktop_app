@@ -9,7 +9,11 @@
     "build": "electron-builder",
     "dist": "electron-builder --publish=never"
   },
-  "keywords": ["test-automation", "screenshot", "desktop"],
+  "keywords": [
+    "test-automation",
+    "screenshot",
+    "desktop"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
@@ -44,4 +48,3 @@
     }
   }
 }
-

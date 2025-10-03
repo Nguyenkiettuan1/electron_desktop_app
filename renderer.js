@@ -2,13 +2,21 @@
 const { ipcRenderer } = require('electron');
 const config = require('./app.config');
 
+// Import modules
+const UiService = require('./modules/ui/uiService');
+const SessionService = require('./modules/session/sessionService');
+
 class TestAutomationDesktopApp {
     constructor() {
         this.currentUser = null;
-        this.currentSession = null;
         this.screenshotData = null;
         this.signals = [];
         this.apiBaseUrl = 'http://127.0.0.1:8000/api/v1'; // Read from environment
+        
+        // Initialize services
+        this.uiService = new UiService();
+        this.sessionService = new SessionService();
+        
         this.init();
     }
 
@@ -82,8 +90,7 @@ class TestAutomationDesktopApp {
         this.setupKeyboardShortcuts();
 
         // Upload queue system - ENABLED (background processing)
-        this.uploadQueue = [];
-        this.setupUploadQueue();
+        // Note: Upload queue is now handled by UiService
 
         // Upload screenshot
         document.getElementById('upload-btn').addEventListener('click', () => {
@@ -125,6 +132,10 @@ class TestAutomationDesktopApp {
         ipcRenderer.on('screenshot-failed', (event, data) => {
             this.showNotification('Screenshot failed: ' + data.error, 'error');
             this.hideLoading();
+        });
+
+        ipcRenderer.on('url-already-exists', (event, data) => {
+            this.showErrorPopup(data.message);
         });
 
         ipcRenderer.on('url-detected', (event, url) => {
@@ -523,6 +534,9 @@ class TestAutomationDesktopApp {
                 const userData = await userResponse.json();
                 this.currentUser = userData;
                 
+                // Set user in session service
+                this.sessionService.setCurrentUser(userData);
+                
                 // Set access token and user info in main process
                 await ipcRenderer.invoke('set-access-token', { 
                     token: this.accessToken, 
@@ -562,8 +576,11 @@ class TestAutomationDesktopApp {
         this.screenshotData = null;
         this.accessToken = null;
         
+        // Clear session service
+        this.sessionService.resetSession();
+        
         // Clear upload queue
-        this.clearUploadQueue();
+        this.uiService.clearUploadQueue();
         
         // Reset UI elements
         document.getElementById('login-section').classList.remove('hidden');
@@ -610,9 +627,7 @@ class TestAutomationDesktopApp {
     }
 
     showMainInterface(user) {
-        document.getElementById('login-section').classList.add('hidden');
-        document.getElementById('main-interface').classList.remove('hidden');
-        document.getElementById('user-name').textContent = user.username;
+        this.uiService.showMainInterface(user);
         this.loadData();
     }
 
@@ -908,189 +923,6 @@ class TestAutomationDesktopApp {
         }
     }
 
-    addToUploadQueue(signalId, url, bucketName, signalName = '') {
-        // Check if session is still valid before adding to queue
-        if (!this.currentSession || !this.currentUser) {
-            this.showNotification('Session expired. Please restart the app.', 'error');
-            return null;
-        }
-        
-        // Check if screenshot data is available
-        if (!this.screenshotData || !this.screenshotData.path) {
-            this.showNotification('No screenshot available for upload', 'error');
-            return null;
-        }
-        
-        const queueItem = {
-            id: Date.now(),
-            signalId,
-            url,
-            bucketName,
-            signalName,
-            // API call parameters
-            sportId: this.currentSession.sportId,
-            assignedUserId: this.currentUser.id,
-            filePath: this.screenshotData.path,
-            status: 'uploading',
-            timestamp: new Date(),
-            error: null,
-            imageUrl: null
-        };
-        
-        this.uploadQueue.unshift(queueItem); // Add to beginning
-        this.updateQueueDisplay();
-        this.showQueue();
-        
-        // Start background upload
-        this.uploadScreenshotBackground(queueItem);
-        
-        return queueItem.id;
-    }
-
-    updateQueueDisplay() {
-        const queueItems = document.getElementById('queue-items');
-        queueItems.innerHTML = '';
-        
-        this.uploadQueue.forEach(item => {
-            const itemEl = document.createElement('div');
-            itemEl.className = 'queue-item';
-            itemEl.dataset.itemId = item.id;
-            
-            const statusClass = item.status === 'uploading' ? 'uploading' : 
-                              item.status === 'success' ? 'success' : 'error';
-            
-            itemEl.innerHTML = `
-                <div class="queue-item-status ${statusClass}"></div>
-                <div class="queue-item-info">
-                    <div class="queue-item-url">${item.url}</div>
-                    ${item.imageUrl ? `<div class="queue-item-image-url">📷 ${item.imageUrl}</div>` : ''}
-                    <div class="queue-item-time">${item.timestamp.toLocaleTimeString()}</div>
-                </div>
-                <div class="queue-item-actions">
-                    ${item.status === 'error' ? '<button class="queue-item-action" title="View Error">⚠️</button>' : ''}
-                    ${item.status === 'success' ? '<button class="queue-item-action" title="View Image">🔗</button>' : ''}
-                    <button class="queue-item-action" title="Remove">🗑️</button>
-                </div>
-            `;
-            
-            // Add click handlers
-            itemEl.addEventListener('click', (e) => {
-                if (e.target.classList.contains('queue-item-action')) {
-                    e.stopPropagation();
-                    return;
-                }
-                
-                if (item.status === 'error') {
-                    this.showErrorDetails(item);
-                } else if (item.status === 'success') {
-                    this.showImageUrl(item);
-                }
-            });
-            
-            // Action button handlers
-            const errorBtn = itemEl.querySelector('[title="View Error"]');
-            const imageBtn = itemEl.querySelector('[title="View Image"]');
-            const removeBtn = itemEl.querySelector('[title="Remove"]');
-            
-            if (errorBtn) {
-                errorBtn.addEventListener('click', () => this.showErrorDetails(item));
-            }
-            if (imageBtn) {
-                imageBtn.addEventListener('click', () => this.showImageUrl(item));
-            }
-            if (removeBtn) {
-                removeBtn.addEventListener('click', () => this.removeFromQueue(item.id));
-            }
-            
-            queueItems.appendChild(itemEl);
-        });
-    }
-
-    showQueue() {
-        const queue = document.getElementById('upload-queue');
-        queue.classList.remove('hidden');
-    }
-
-    hideQueue() {
-        const queue = document.getElementById('upload-queue');
-        queue.classList.add('hidden');
-    }
-
-    removeFromQueue(itemId) {
-        this.uploadQueue = this.uploadQueue.filter(item => item.id !== itemId);
-        this.updateQueueDisplay();
-        
-        if (this.uploadQueue.length === 0) {
-            this.hideQueue();
-        }
-    }
-
-    clearUploadQueue() {
-        this.uploadQueue = [];
-        this.updateQueueDisplay();
-        this.hideQueue();
-        console.log('Upload queue cleared');
-    }
-
-    showErrorDetails(item) {
-        const errorMsg = item.error || 'Unknown error occurred';
-        this.showNotification(`Upload failed: ${errorMsg}`, 'error');
-        
-        // Copy error URL to clipboard if available
-        if (item.url) {
-            navigator.clipboard.writeText(item.url);
-            this.showNotification('Error URL copied to clipboard', 'info');
-        }
-    }
-
-    showImageUrl(item) {
-        if (item.imageUrl) {
-            navigator.clipboard.writeText(item.imageUrl);
-            this.showNotification('Image URL copied to clipboard', 'success');
-        }
-    }
-
-    showErrorPopupWithDetails(queueItem) {
-        // Create error popup with URL and details
-        const popup = document.createElement('div');
-        popup.className = 'error-popup-fullscreen';
-        popup.innerHTML = `
-            <div class="error-popup-content-fullscreen">
-                <div class="error-popup-header-fullscreen">
-                    <span class="error-icon-fullscreen">❌</span>
-                    <h2>Upload Failed!</h2>
-                </div>
-                <div class="error-popup-body-fullscreen">
-                    <p class="error-message">${queueItem.error}</p>
-                    <div class="error-details">
-                        <p>🔗 <strong>Failed URL:</strong></p>
-                        <p class="error-url">${queueItem.url}</p>
-                        <p>📁 <strong>Bucket:</strong> ${queueItem.bucketName}</p>
-                        <p>⏰ <strong>Time:</strong> ${queueItem.timestamp.toLocaleString()}</p>
-                        <p>📝 <strong>What to do?</strong></p>
-                        <p>Check your internet connection and try again, or contact support if the problem persists.</p>
-                    </div>
-                </div>
-                <div class="error-popup-footer-fullscreen">
-                    <button class="error-popup-btn-fullscreen" onclick="this.closest('.error-popup-fullscreen').remove()">
-                        Got it! I'll try again
-                    </button>
-                    <button class="error-popup-btn-fullscreen error-copy-url" onclick="navigator.clipboard.writeText('${queueItem.url}'); this.textContent='URL Copied!'">
-                        Copy URL
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(popup);
-        
-        // Auto remove after 15 seconds
-        setTimeout(() => {
-            if (popup.parentNode) {
-                popup.remove();
-            }
-        }, 15000);
-    }
 
     async startSession() {
         const regionInput = document.getElementById('region');
@@ -1135,20 +967,16 @@ class TestAutomationDesktopApp {
             
             console.log('DEBUG: sportName extracted:', sportName);
             
-            // Lock UI state (no API call needed)
-            this.currentSession = { regionId, sportId, sportName };
+            // Use session service to start session
+            const result = this.sessionService.startSession(regionId, sportId, sportName);
             
-            // Disable region and sport selects
-            document.getElementById('region').disabled = true;
-            document.getElementById('sport').disabled = true;
-            document.getElementById('start-session-btn').disabled = true;
-            
-            // Show stop session button
-            document.getElementById('stop-session-btn').classList.remove('hidden');
-            
-            // Update UI
-            this.updateSessionStatus('active');
-            this.showNotification('Session started! Press Ctrl+Shift+Q to take screenshots.', 'success');
+            if (result.success) {
+                // Update UI
+                this.updateSessionStatus('active');
+                this.showNotification('Session started! Press Ctrl+Shift+Q to take screenshots.', 'success');
+            } else {
+                this.showNotification('Failed to start session: ' + result.error, 'error');
+            }
             
         } catch (error) {
             this.showNotification('Failed to start session: ' + error.message, 'error');
@@ -1157,23 +985,16 @@ class TestAutomationDesktopApp {
 
     stopSession() {
         try {
-            // Reset session data
-            this.currentSession = null;
+            // Use session service to stop session
+            const result = this.sessionService.stopSession();
             
-            // Enable region and sport selects
-            document.getElementById('region').disabled = false;
-            document.getElementById('sport').disabled = false;
-            document.getElementById('start-session-btn').disabled = false;
-            
-            // Hide stop session button
-            document.getElementById('stop-session-btn').classList.add('hidden');
-            
-            // Clear bucket name
-            document.getElementById('bucket-name').value = '';
-            
-            // Update UI
-            this.updateSessionStatus('Not Started');
-            this.showNotification('Session stopped. You can start a new session.', 'info');
+            if (result.success) {
+                // Update UI
+                this.updateSessionStatus('Not Started');
+                this.showNotification('Session stopped. You can start a new session.', 'info');
+            } else {
+                this.showNotification('Failed to stop session: ' + result.error, 'error');
+            }
             
         } catch (error) {
             this.showNotification('Failed to stop session: ' + error.message, 'error');
@@ -1181,7 +1002,7 @@ class TestAutomationDesktopApp {
     }
 
     async takeScreenshot() {
-        if (!this.currentSession) {
+        if (!this.sessionService.isSessionActive()) {
             this.showNotification('Please start a session first', 'error');
             return;
         }
@@ -1261,16 +1082,7 @@ class TestAutomationDesktopApp {
     }
 
     showScreenshotPreview() {
-        const preview = document.getElementById('screenshot-preview');
-        const image = document.getElementById('screenshot-image');
-        
-        if (this.screenshotData && this.screenshotData.path) {
-            // Load image from local file path
-            image.src = `file://${this.screenshotData.path}`;
-            preview.classList.remove('hidden');
-        }
-        
-        // Don't auto detect URL - only use manual input or extension
+        this.uiService.showScreenshotPreview(this.screenshotData);
     }
 
     async uploadScreenshot() {
@@ -1319,8 +1131,12 @@ class TestAutomationDesktopApp {
         const currentUrl = document.getElementById('url').value;
         console.log('📤 Adding to queue with URL:', currentUrl);
         
+        // Get session and user data
+        const sessionData = this.sessionService.getSessionData();
+        const userData = this.sessionService.getCurrentUser();
+        
         // Add to upload queue for background processing
-        const queueId = this.addToUploadQueue(signalId, currentUrl, bucketName, signalName);
+        const queueId = this.uiService.addToUploadQueue(signalId, currentUrl, bucketName, signalName, this.screenshotData, sessionData, userData);
         
         if (queueId) {
             // Immediate feedback - no waiting for API
@@ -1331,102 +1147,6 @@ class TestAutomationDesktopApp {
         }
     }
 
-    async uploadScreenshotBackground(queueItem) {
-        const { signalId, url, bucketName, sportId, assignedUserId, filePath } = queueItem;
-        try {
-            console.log('Starting background upload for queue item:', queueItem.id);
-            console.log('Queue item data:', {
-                signalId,
-                url,
-                bucketName,
-                sportId,
-                assignedUserId,
-                filePath
-            });
-            
-            // Check if all required data is available
-            if (!sportId || !assignedUserId || !filePath) {
-                queueItem.status = 'error';
-                queueItem.error = 'Missing required data: sportId, assignedUserId, or filePath';
-                this.updateQueueDisplay();
-                this.showErrorPopupWithDetails(queueItem);
-                return;
-            }
-            
-            // Step 1: Check if URL already exists
-            console.log('🔍 Checking URL existence:', url);
-            const urlCheckResult = await ipcRenderer.invoke('check-url-exists', url);
-            
-            if (urlCheckResult.success && urlCheckResult.exists) {
-                console.log('❌ URL already exists in database');
-                queueItem.status = 'error';
-                queueItem.error = 'URL already exists in database! Please navigate to a different URL and try again.';
-                this.updateQueueDisplay();
-                this.showErrorPopupWithDetails(queueItem);
-                return;
-            }
-            
-            console.log('✅ URL is new, proceeding with upload');
-            
-            // Step 2: Create detected link
-            console.log('🔗 Creating detected link for URL:', url);
-            const linkResult = await ipcRenderer.invoke('create-detected-link', {
-                url: url,
-                sportId: sportId,
-                assignedUserId: assignedUserId
-            });
-            
-            // Handle link creation result
-            if (!linkResult.success) {
-                queueItem.status = 'error';
-                queueItem.error = 'Failed to create detected link: ' + linkResult.error + '. Make sure backend server is running on port 8000.';
-                this.updateQueueDisplay();
-                this.showErrorPopupWithDetails(queueItem);
-                return;
-            }
-            
-            console.log('✅ Detected link created:', linkResult.data);
-            
-            // Step 3: Upload screenshot
-            const uploadData = {
-                filePath: filePath,
-                detectedLinkId: linkResult.data.id,
-                bucketName: bucketName
-            };
-            
-            console.log('📤 Uploading screenshot with data:', uploadData);
-            const uploadResult = await ipcRenderer.invoke('upload-screenshot', uploadData);
-            
-            if (uploadResult.success) {
-                // Success - update queue item
-                queueItem.status = 'success';
-                queueItem.imageUrl = uploadResult.data?.image_url || uploadResult.imageUrl;
-                this.updateQueueDisplay();
-                
-                // Show success notification
-                this.showSuccessNotification(`✅ Screenshot uploaded successfully to folder: ${bucketName}!`);
-                console.log('✅ Upload completed successfully');
-            } else {
-                // Error - update queue item and show error popup
-                queueItem.status = 'error';
-                queueItem.error = 'Upload failed: ' + uploadResult.error;
-                this.updateQueueDisplay();
-                
-                // Show error popup with URL and details
-                this.showErrorPopupWithDetails(queueItem);
-                console.log('❌ Upload failed:', uploadResult.error);
-            }
-        } catch (error) {
-            // Error - update queue item
-            queueItem.status = 'error';
-            queueItem.error = 'Failed to upload: ' + error.message;
-            this.updateQueueDisplay();
-            
-            // Show error popup with URL and details
-            this.showErrorPopupWithDetails(queueItem);
-            console.log('❌ Upload error:', error);
-        }
-    }
 
     hideAppToBackground() {
         // Hide main window to background
@@ -1468,7 +1188,7 @@ class TestAutomationDesktopApp {
     }
 
     hideScreenshotPreview() {
-        document.getElementById('screenshot-preview').classList.add('hidden');
+        this.uiService.hideScreenshotPreview();
     }
 
     clearForm() {
@@ -1672,44 +1392,11 @@ class TestAutomationDesktopApp {
     }
 
     showScreenshotPopup(data) {
-        const popup = document.getElementById('screenshot-popup');
-        const filenameEl = document.getElementById('popup-filename');
-        const urlEl = document.getElementById('popup-url');
-        const timeEl = document.getElementById('popup-time');
-        const imageEl = document.getElementById('popup-screenshot-image');
-        const signalInput = document.getElementById('popup-signal');
-
-        // Populate popup data
-        filenameEl.textContent = data.filename || 'screenshot.png';
-        // ONLY use main page URL - no auto detect
-        const mainPageUrl = document.getElementById('url').value;
-        urlEl.textContent = mainPageUrl || 'No URL detected';
-        timeEl.textContent = new Date(data.timestamp).toLocaleString();
-        
-        // Load screenshot image
-        if (data.path) {
-            imageEl.src = `file://${data.path}`;
-        }
-
-        // Clear popup signal input
-        signalInput.value = '';
-        signalInput.dataset.value = '';
-        
-        // Load signals for popup (will be loaded when user focuses on input)
-        // No need to populate here - let single input logic handle it
-
-        // Show popup
-        popup.classList.remove('hidden');
-        
-        // Focus on signal input
-        setTimeout(() => {
-            signalInput.focus();
-        }, 100);
+        this.uiService.showScreenshotPopup(data);
     }
 
     hideScreenshotPopup() {
-        const popup = document.getElementById('screenshot-popup');
-        popup.classList.add('hidden');
+        this.uiService.hideScreenshotPopup();
     }
 
     handlePopupOk() {
@@ -1781,8 +1468,12 @@ class TestAutomationDesktopApp {
         const currentUrl = document.getElementById('url').value;
         console.log('📤 Adding to queue with URL (popup):', currentUrl);
         
+        // Get session and user data
+        const sessionData = this.sessionService.getSessionData();
+        const userData = this.sessionService.getCurrentUser();
+        
         // Add to upload queue for background processing
-        const queueId = this.addToUploadQueue(selectedSignal, currentUrl, bucketName, signalName);
+        const queueId = this.uiService.addToUploadQueue(selectedSignal, currentUrl, bucketName, signalName, this.screenshotData, sessionData, userData);
         
         if (queueId) {
             // Immediate feedback - no waiting for API
@@ -1794,9 +1485,7 @@ class TestAutomationDesktopApp {
     }
 
     updateSessionStatus(status) {
-        const statusElement = document.getElementById('session-status');
-        statusElement.textContent = status;
-        statusElement.className = `step-status ${status === 'active' ? 'active' : 'ready'}`;
+        this.uiService.updateSessionStatus(status);
     }
 
     updateStatus(message) {
@@ -1804,29 +1493,15 @@ class TestAutomationDesktopApp {
     }
 
     showNotification(message, type = 'info') {
-        const notification = document.getElementById('notification');
-        const text = document.getElementById('notification-text');
-        
-        text.textContent = message;
-        notification.className = `notification ${type}`;
-        notification.classList.remove('hidden');
-
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            notification.classList.add('hidden');
-        }, 5000);
+        this.uiService.showNotification(message, type);
     }
 
     showLoading(message) {
-        const overlay = document.getElementById('loading-overlay');
-        const text = document.getElementById('loading-text');
-        
-        text.textContent = message;
-        overlay.classList.remove('hidden');
+        this.uiService.showLoading(message);
     }
 
     hideLoading() {
-        document.getElementById('loading-overlay').classList.add('hidden');
+        this.uiService.hideLoading();
     }
 
     async apiCall(method, endpoint, data = null) {
@@ -1926,9 +1601,6 @@ document.addEventListener('DOMContentLoaded', () => {
         app.handleUrlDetectionRequest(data);
     });
     
-    ipcRenderer.on('url-already-exists', (event, data) => {
-        app.handleUrlAlreadyExists(data);
-    });
 });
 
 // Handle notification close
