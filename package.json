@@ -7,7 +7,12 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "build": "electron-builder",
-    "dist": "electron-builder --publish=never"
+    "dist": "electron-builder --publish=never",
+    "build-win": "electron-builder --win",
+    "build-win-portable": "electron-builder --win portable",
+    "build-simple": "electron-builder --win portable --config.win.sign=false",
+    "pack": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
+    "pack-portable": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --asar"
   },
   "keywords": [
     "test-automation",
@@ -18,7 +23,8 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^27.0.0",
-    "electron-builder": "^24.6.0"
+    "electron-builder": "^24.6.0",
+    "electron-packager": "^17.1.2"
   },
   "dependencies": {
     "axios": "^1.6.0",
@@ -32,19 +38,32 @@
     },
     "files": [
       "**/*",
-      "!node_modules/**/*"
+      "!node_modules/**/*",
+      "!screenshots/**/*",
+      "!__pycache__/**/*",
+      "!*.log",
+      "!dist/**/*",
+      "!.env",
+      "!env.example"
     ],
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": "dir",
+      "sign": false,
+      "verifyUpdateCodeSignature": false,
+      "requestedExecutionLevel": "asInvoker"
     },
     "mac": {
-      "target": "dmg",
-      "icon": "assets/icon.icns"
+      "target": "dmg"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "assets/icon.png"
+      "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Test Automation Screen Auto"
     }
   }
 }

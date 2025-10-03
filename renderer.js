@@ -11,7 +11,7 @@ class TestAutomationDesktopApp {
         this.currentUser = null;
         this.screenshotData = null;
         this.signals = [];
-        this.apiBaseUrl = 'http://127.0.0.1:8000/api/v1'; // Read from environment
+        this.apiBaseUrl = config.apiBaseUrl; // Use config from app.config.js
         
         // Initialize services
         this.uiService = new UiService();
@@ -36,8 +36,8 @@ class TestAutomationDesktopApp {
             console.log('🌐 API Base URL:', this.apiBaseUrl);
         } catch (error) {
             console.error('❌ Failed to load config from main process:', error);
-            // Keep default API URL
-            console.log('🌐 Using default API Base URL:', this.apiBaseUrl);
+            // Keep default API URL from config
+            console.log('🌐 Using config API Base URL:', this.apiBaseUrl);
         }
     }
 
@@ -498,6 +498,9 @@ class TestAutomationDesktopApp {
             
             this.showLoading('Logging in...');
             
+            console.log('🔐 Attempting login to:', `${this.apiBaseUrl}/auth/login`);
+            console.log('👤 Username:', username);
+            
             // Use form data for OAuth2PasswordRequestForm
             const formData = new URLSearchParams();
             formData.append('username', username);
@@ -513,7 +516,9 @@ class TestAutomationDesktopApp {
             });
             
             if (!response.ok) {
+                console.error('❌ Login failed:', response.status, response.statusText);
                 const errorData = await response.json().catch(() => ({ detail: 'Login failed' }));
+                console.error('❌ Error details:', errorData);
                 throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
             }
             
