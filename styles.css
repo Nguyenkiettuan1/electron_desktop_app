@@ -1211,7 +1211,8 @@ body {
 .region-dropdown,
 .sport-dropdown,
 .signal-dropdown,
-.popup-signal-dropdown {
+.popup-signal-dropdown,
+.dropdown {
     position: absolute;
     top: 100%;
     left: 0;
@@ -1228,7 +1229,8 @@ body {
 .region-option,
 .sport-option,
 .signal-option,
-.popup-signal-option {
+.popup-signal-option,
+.dropdown-option {
     padding: 10px 15px;
     cursor: pointer;
     border-bottom: 1px solid #f0f0f0;
@@ -1238,14 +1240,16 @@ body {
 .region-option:hover,
 .sport-option:hover,
 .signal-option:hover,
-.popup-signal-option:hover {
+.popup-signal-option:hover,
+.dropdown-option:hover {
     background-color: #f8f9fa;
 }
 
 .region-option:last-child,
 .sport-option:last-child,
 .signal-option:last-child,
-.popup-signal-option:last-child {
+.popup-signal-option:last-child,
+.dropdown-option:last-child {
     border-bottom: none;
 }
 
@@ -1372,4 +1376,14 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* Sport Filters Section - Added for filtering sports */
+.sport-filters-section {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border: 1px solid #e9ecef;
 }

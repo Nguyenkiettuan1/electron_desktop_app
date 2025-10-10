@@ -50,29 +50,64 @@ class ApiService {
         }
     }
 
-    async getRegions() {
+    async getRegions(searchQuery = '', page = 1, pageSize = 10) {
         try {
-            const response = await axios.get(`${this.apiBaseUrl}/regions?page_size=100`);
+            // Build query params
+            let queryParams = `page=${page}&page_size=${pageSize}`;
+            
+            // Add search params if provided (search by region_name)
+            if (searchQuery && searchQuery.trim()) {
+                const search = encodeURIComponent(searchQuery.trim());
+                queryParams += `&region_name=${search}`;
+            }
+            
+            console.log('🌍 Fetching regions with params:', queryParams);
+            const response = await axios.get(`${this.apiBaseUrl}/regions?${queryParams}`);
             return { success: true, data: response.data };
         } catch (error) {
+            console.error('❌ Error fetching regions:', error.response?.data || error.message);
             return { success: false, error: error.message };
         }
     }
 
-    async getSignals() {
+    async getSignals(searchQuery = '', page = 1, pageSize = 10) {
         try {
-            const response = await axios.get(`${this.apiBaseUrl}/signals?page_size=100`);
+            // Build query params
+            let queryParams = `page=${page}&page_size=${pageSize}`;
+            
+            // Add search params if provided (search by signal_name)
+            if (searchQuery && searchQuery.trim()) {
+                const search = encodeURIComponent(searchQuery.trim());
+                queryParams += `&signal_name=${search}`;
+            }
+            
+            console.log('🔔 Fetching signals with params:', queryParams);
+            const response = await axios.get(`${this.apiBaseUrl}/signals?${queryParams}`);
             return { success: true, data: response.data };
         } catch (error) {
+            console.error('❌ Error fetching signals:', error.response?.data || error.message);
             return { success: false, error: error.message };
         }
     }
 
-    async getSports(regionId) {
+    async getSports(regionId, searchQuery = '', page = 1, pageSize = 10) {
         try {
-            const response = await axios.get(`${this.apiBaseUrl}/sports?page_size=100&region_id=${regionId}`);
+            // Build query params
+            let queryParams = `page=${page}&page_size=${pageSize}&region_id=${regionId}`;
+            
+            // Add search params if provided
+            // Note: Backend API only supports searching by league OR match_name separately
+            // Here we search by league only (you can also try match_name if needed)
+            if (searchQuery && searchQuery.trim()) {
+                const search = encodeURIComponent(searchQuery.trim());
+                queryParams += `&league=${search}`;
+            }
+            
+            console.log('🏆 Fetching sports with params:', queryParams);
+            const response = await axios.get(`${this.apiBaseUrl}/sports?${queryParams}`);
             return { success: true, data: response.data };
         } catch (error) {
+            console.error('❌ Error fetching sports:', error.response?.data || error.message);
             return { success: false, error: error.message };
         }
     }
@@ -116,37 +151,40 @@ class ApiService {
         }
     }
 
-    async createDetectedLink(url, sportId, assignedUserId) {
+    async createDetectedLink(url, sportId, signalId, assignedUserId) {
         try {
-            console.log('🔗 Creating detected link:', { url, sportId, assignedUserId });
+            console.log(' Creating detected link:', { url, sportId, signalId, assignedUserId });
             const response = await axios.post(`${this.apiBaseUrl}/detected_links`, {
                 url: url,
                 sport_id: sportId,
+                signal_id: signalId,
                 assigned_user_id: assignedUserId
             }, {
                 headers: {
-                    'Authorization': `Bearer ${this.accessToken}`
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json'
                 }
             });
-            console.log('✅ Detected link created successfully');
             return { success: true, data: response.data };
         } catch (error) {
-            console.error('❌ Error creating detected link:', error);
-            return { success: false, error: error.message };
+            console.error('❌ Error creating detected link:', error.response?.data || error.message);
+            return { 
+                success: false, 
+                error: error.response?.data?.detail || error.message 
+            };
         }
     }
 
-    async uploadScreenshot(filePath, detectedLinkId, bucketName = 'screenshots') {
+    async uploadScreenshot(filePath, detectedLinkId, bucketName = 'screenshots', provider = 'GOOGLE_CLOUD') {
         try {
             const FormData = require('form-data');
             const form = new FormData();
             
-            // Add file
             form.append('file', require('fs').createReadStream(filePath));
             
-            // Add other data
             form.append('detected_link_id', detectedLinkId);
             form.append('bucket_name', bucketName);
+            form.append('provider', provider);
             
             const response = await axios.post(`${this.apiBaseUrl}/detected_link_images/upload`, form, {
                 headers: {
@@ -155,9 +193,14 @@ class ApiService {
                 }
             });
             
+            console.log('✅ Upload response:', response.data);
             return { success: true, data: response.data };
         } catch (error) {
-            return { success: false, error: error.message };
+            console.error('❌ Upload error:', error.response?.data || error.message);
+            return { 
+                success: false, 
+                error: error.response?.data?.detail || error.message 
+            };
         }
     }
 }
