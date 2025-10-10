@@ -86,6 +86,9 @@ class TestAutomationDesktopApp {
         // Popup signal (same logic as main signal)
         this.setupSingleInputHandlers('popup-signal', 'signals', 'signal_name', this.loadPopupSignals.bind(this));
 
+        // Sport filter inputs - reload sports when filters change
+        this.setupSportFilterListeners();
+
         // Global keyboard shortcuts
         this.setupKeyboardShortcuts();
 
@@ -348,6 +351,10 @@ class TestAutomationDesktopApp {
         input.value = text;
         input.dataset.value = value;
         
+        // Trigger change event so other handlers can react
+        const changeEvent = new Event('change', { bubbles: true });
+        input.dispatchEvent(changeEvent);
+        
         // Hide dropdown
         document.getElementById(`${inputId}-dropdown`).classList.add('hidden');
         
@@ -358,6 +365,43 @@ class TestAutomationDesktopApp {
         if (inputId === 'region') {
             this.loadSports(value, 1, '', true);
         }
+    }
+
+    setupSportFilterListeners() {
+        // Get all sport filter inputs
+        const leagueInput = document.getElementById('sport-league');
+        const matchNameInput = document.getElementById('sport-match-name');
+        const startTimeInput = document.getElementById('sport-start-time');
+        const endTimeInput = document.getElementById('sport-end-time');
+        
+        const reloadSports = () => {
+            const regionInput = document.getElementById('region');
+            const regionId = regionInput?.dataset.value;
+            
+            // Only reload if region is selected
+            if (regionId) {
+                this.loadSports(regionId, 1, '', true);
+            }
+        };
+        
+        // Add event listeners for ENTER key and BLUR (click outside)
+        const filterInputs = [leagueInput, matchNameInput, startTimeInput, endTimeInput];
+        
+        filterInputs.forEach(input => {
+            if (input) {
+                // Reload on Enter key
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        reloadSports();
+                    }
+                });
+                
+                // Reload when user clicks outside (blur)
+                input.addEventListener('blur', () => {
+                    reloadSports();
+                });
+            }
+        });
     }
 
     setupDropdownInfiniteScroll(dropdownId, apiEndpoint, searchParam, loadFunction) {
@@ -770,8 +814,30 @@ class TestAutomationDesktopApp {
                 params.append('region_id', regionId);
             }
             
-            if (query) {
+            // Get filter values from inputs
+            const leagueFilter = document.getElementById('sport-league')?.value.trim();
+            const matchNameFilter = document.getElementById('sport-match-name')?.value.trim();
+            const startTimeFilter = document.getElementById('sport-start-time')?.value;
+            const endTimeFilter = document.getElementById('sport-end-time')?.value;
+            
+            // Apply filters (if provided, they override the search query)
+            if (leagueFilter) {
+                params.append('league', leagueFilter);
+            } else if (query) {
+                // Use search query only if no league filter
                 params.append('league', query);
+            }
+            
+            if (matchNameFilter) {
+                params.append('match_name', matchNameFilter);
+            }
+            
+            if (startTimeFilter) {
+                params.append('start_time', startTimeFilter);
+            }
+            
+            if (endTimeFilter) {
+                params.append('end_time', endTimeFilter);
             }
             
             const sportsResponse = await this.apiCallWithAuth('GET', `/sports?${params}`);
@@ -1595,6 +1661,7 @@ class TestAutomationDesktopApp {
             throw new Error(`API call failed: ${error.message}`);
         }
     }
+
 }
 
 // Initialize app when DOM is loaded

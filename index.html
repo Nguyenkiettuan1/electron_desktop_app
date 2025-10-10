@@ -15,7 +15,7 @@
           <div class="header-actions">
             <button id="minimize-btn" class="header-btn">−</button>
             <button id="maximize-btn" class="header-btn">□</button>
-            <button id="close-btn" class="header-btn">×</button>
+            <button id="close-btn" class="header-btn">✖</button>
           </div>
         </div>
       </header>
@@ -89,6 +89,60 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Sport Advanced Filters -->
+                <div class="sport-filters-section">
+                  <h4 style="margin-bottom: 15px; color: #495057">
+                    🔍 Sport Filters (Optional)
+                  </h4>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="sport-league">League (Mùa giải)</label>
+                      <input
+                        type="text"
+                        id="sport-league"
+                        class="form-control"
+                        placeholder="e.g., Premier League, La Liga..."
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="sport-match-name"
+                        >Match Name (Tên trận)</label
+                      >
+                      <input
+                        type="text"
+                        id="sport-match-name"
+                        class="form-control"
+                        placeholder="e.g., Manchester, Liverpool..."
+                      />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="sport-start-time">Start Time (Từ)</label>
+                      <input
+                        type="text"
+                        id="sport-start-time"
+                        class="form-control"
+                        placeholder="YYYY-MM-DD HH:MM"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="sport-end-time">End Time (Đến)</label>
+                      <input
+                        type="text"
+                        id="sport-end-time"
+                        class="form-control"
+                        placeholder="YYYY-MM-DD HH:MM"
+                      />
+                    </div>
+                  </div>
+                  <small class="form-help"
+                    >💡 These filters will be applied when you click on the
+                    Sport field to load options</small
+                  >
+                </div>
+
                 <button id="start-session-btn" class="btn btn-success">
                   Start Session
                 </button>
@@ -174,13 +228,13 @@
 
           <!-- Screenshot Preview -->
           <div id="screenshot-preview" class="screenshot-preview hidden">
-            <h3> Screenshot Preview</h3>
+            <h3>Screenshot Preview</h3>
             <div class="preview-container">
               <img id="screenshot-image" alt="Screenshot Preview" />
             </div>
             <div class="preview-actions">
               <button id="confirm-upload-btn" class="btn btn-success">
-                 Upload Screenshot
+                Upload Screenshot
               </button>
               <button id="cancel-upload-btn" class="btn btn-danger">
                 ❌ Cancel
@@ -194,7 +248,7 @@
             <div class="popup-content">
               <div class="popup-header">
                 <h3>📸 Screenshot Ready</h3>
-                <button id="popup-close-btn" class="popup-close">×</button>
+                <button id="popup-close-btn" class="popup-close">✖</button>
               </div>
               <div class="popup-body">
                 <div class="screenshot-info">
@@ -207,7 +261,7 @@
                     <span id="popup-url">https://example.com</span>
                   </div>
                   <div class="info-item">
-                    <label>⏰ Time:</label>
+                    <label>🕐 Time:</label>
                     <span id="popup-time">2025-09-24 15:07:40</span>
                   </div>
                 </div>
@@ -235,10 +289,10 @@
               </div>
               <div class="popup-actions">
                 <button id="popup-ok-btn" class="btn btn-success">
-                   Upload Screenshot
+                  Upload Screenshot
                 </button>
                 <button id="popup-cancel-btn" class="btn btn-danger">
-                  ❌ Cancel
+                  Cancel
                 </button>
               </div>
             </div>
@@ -251,7 +305,7 @@
         <div class="status-info">
           <span id="status-text">Ready</span>
           <span id="hotkey-info"
-            >Ctrl+Alt+S: Screenshot | Ctrl+Alt+U: Detect URL</span
+            >Ctrl+Shift+Q: Screenshot | Ctrl+Shift+U: upload in pop up</span
           >
         </div>
       </footer>
@@ -269,7 +323,7 @@
     <div id="upload-queue" class="upload-queue hidden">
       <div class="queue-header">
         <h3>📤 Upload Queue</h3>
-        <button id="queue-toggle" class="queue-toggle">−</button>
+        <button id="queue-toggle" class="queue-toggle">▼</button>
       </div>
       <div id="queue-content" class="queue-content">
         <div id="queue-items"></div>
@@ -280,7 +334,7 @@
     <div id="notification" class="notification hidden">
       <div class="notification-content">
         <span id="notification-text"></span>
-        <button id="notification-close">×</button>
+        <button id="notification-close">✖</button>
       </div>
     </div>
 

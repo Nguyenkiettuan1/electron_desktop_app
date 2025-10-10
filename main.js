@@ -279,19 +279,17 @@ ipcMain.handle('get-current-user', async (event) => {
     return await testApp.apiService.getCurrentUser();
 });
 
-ipcMain.handle('get-regions', async (event) => {
-    return await testApp.apiService.getRegions();
+ipcMain.handle('get-regions', async (event, { searchQuery = '', page = 1, pageSize = 10 } = {}) => {
+    return await testApp.apiService.getRegions(searchQuery, page, pageSize);
 });
 
-ipcMain.handle('get-signals', async (event) => {
-    return await testApp.apiService.getSignals();
+ipcMain.handle('get-signals', async (event, { searchQuery = '', page = 1, pageSize = 10 } = {}) => {
+    return await testApp.apiService.getSignals(searchQuery, page, pageSize);
 });
 
-ipcMain.handle('get-sports', async (event, regionId) => {
-    return await testApp.apiService.getSports(regionId);
+ipcMain.handle('get-sports', async (event, { regionId, searchQuery = '', page = 1, pageSize = 10 }) => {
+    return await testApp.apiService.getSports(regionId, searchQuery, page, pageSize);
 });
-
-
 
 // New IPC handlers for screenshot workflow
 ipcMain.handle('take-screenshot', async (event) => {
@@ -342,12 +340,12 @@ ipcMain.handle('check-url-exists', async (event, url) => {
     return await testApp.apiService.checkUrlExists(url);
 });
 
-ipcMain.handle('create-detected-link', async (event, { url, sportId, assignedUserId }) => {
-    return await testApp.apiService.createDetectedLink(url, sportId, assignedUserId);
+ipcMain.handle('create-detected-link', async (event, { url, sportId, signalId, assignedUserId }) => {
+    return await testApp.apiService.createDetectedLink(url, sportId, signalId, assignedUserId);
 });
 
-ipcMain.handle('upload-screenshot', async (event, { filePath, detectedLinkId, bucketName = 'screenshots' }) => {
-    return await testApp.apiService.uploadScreenshot(filePath, detectedLinkId, bucketName);
+ipcMain.handle('upload-screenshot', async (event, { filePath, detectedLinkId, bucketName = 'screenshots', provider = 'GOOGLE_CLOUD' }) => {
+    return await testApp.apiService.uploadScreenshot(filePath, detectedLinkId, bucketName, provider);
 });
 
 // Window control handlers

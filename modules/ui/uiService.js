@@ -134,6 +134,12 @@ class UiService {
             return null;
         }
         
+        // Validate signalId is present
+        if (!signalId) {
+            this.showNotification('Please select a signal before uploading', 'error');
+            return null;
+        }
+        
         const queueItem = {
             id: Date.now(),
             signalId,
@@ -278,9 +284,9 @@ class UiService {
             });
             
             // Check if all required data is available
-            if (!sportId || !assignedUserId || !filePath) {
+            if (!signalId || !sportId || !assignedUserId || !filePath) {
                 queueItem.status = 'error';
-                queueItem.error = 'Missing required data: sportId, assignedUserId, or filePath';
+                queueItem.error = 'Missing required data: signalId, sportId, assignedUserId, or filePath';
                 this.updateQueueDisplay();
                 this.showErrorPopupWithDetails(queueItem);
                 return;
@@ -302,11 +308,12 @@ class UiService {
             
             console.log('✅ URL is new, proceeding with upload');
             
-            // Step 2: Create detected link
+            // Step 2: Create detected link with signal_id
             console.log('🔗 Creating detected link for URL:', url);
             const linkResult = await ipcRenderer.invoke('create-detected-link', {
                 url: url,
                 sportId: sportId,
+                signalId: signalId,
                 assignedUserId: assignedUserId
             });
             
