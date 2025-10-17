@@ -99,16 +99,37 @@ class UiService {
             imageEl.src = `file://${data.path}`;
         }
 
-        // Clear popup signal input
+        // Clear popup signal input and search
         signalInput.value = '';
         signalInput.dataset.value = '';
+        
+        // Clear signal dropdown and hide create signal form
+        const signalDropdown = document.getElementById('popup-signal-dropdown');
+        const createSignalSection = document.getElementById('create-signal-section');
+        const showCreateSignalBtn = document.getElementById('show-create-signal-btn');
+        
+        if (signalDropdown) {
+            signalDropdown.classList.add('hidden');
+        }
+        if (createSignalSection) {
+            createSignalSection.classList.add('hidden');
+        }
+        if (showCreateSignalBtn) {
+            showCreateSignalBtn.classList.remove('hidden');
+        }
 
         // Show popup
         popup.classList.remove('hidden');
         
-        // Focus on signal input
+        // Focus on signal input and trigger load signals
         setTimeout(() => {
             signalInput.focus();
+            // Trigger load signals with empty query to show all signals
+            // Dispatch custom event to trigger signal loading
+            const loadSignalsEvent = new CustomEvent('loadPopupSignals', {
+                detail: { page: 1, query: '', isNewSearch: true }
+            });
+            document.dispatchEvent(loadSignalsEvent);
         }, 100);
     }
 

@@ -84,6 +84,10 @@ class TestAutomationApp {
         // Register Esc for cancel
         globalShortcut.register('Escape', () => {
             this.triggerCancel();
+            // Also send event to close error popup if exists
+            if (this.mainWindow) {
+                this.mainWindow.webContents.send('close-error-popup');
+            }
         });
 
         // Register Ctrl+Alt+U for URL detection
@@ -348,6 +352,10 @@ ipcMain.handle('upload-screenshot', async (event, { filePath, detectedLinkId, bu
     return await testApp.apiService.uploadScreenshot(filePath, detectedLinkId, bucketName, provider);
 });
 
+ipcMain.handle('create-signal', async (event, signalData) => {
+    return await testApp.apiService.createSignal(signalData);
+});
+
 // Window control handlers
 ipcMain.handle('minimize-window', async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -382,6 +390,50 @@ ipcMain.handle('get-config', async (event) => {
         backendHost: config.backendHost,
         backendPort: config.backendPort
     };
+});
+
+// Delete file handler
+ipcMain.handle('delete-file', async (event, filePath) => {
+    try {
+        const fs = require('fs');
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log('File deleted successfully:', filePath);
+            return { success: true };
+        } else {
+            console.log('File does not exist:', filePath);
+            return { success: true }; // File already doesn't exist
+        }
+    } catch (error) {
+        console.error('Failed to delete file:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Open folder handler
+ipcMain.handle('open-folder', async (event, folderPath) => {
+    try {
+        const { shell } = require('electron');
+        await shell.showItemInFolder(folderPath);
+        console.log('Folder opened successfully:', folderPath);
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to open folder:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Open file handler
+ipcMain.handle('open-file', async (event, filePath) => {
+    try {
+        const { shell } = require('electron');
+        await shell.openPath(filePath);
+        console.log('File opened successfully:', filePath);
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to open file:', error);
+        return { success: false, error: error.message };
+    }
 });
 
 

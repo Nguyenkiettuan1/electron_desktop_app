@@ -85,6 +85,15 @@ class TestAutomationDesktopApp {
         
         // Popup signal (same logic as main signal)
         this.setupSingleInputHandlers('popup-signal', 'signals', 'signal_name', this.loadPopupSignals.bind(this));
+        
+        // Create signal functionality
+        this.setupCreateSignalHandlers();
+        
+        // Listen for custom event to load popup signals
+        document.addEventListener('loadPopupSignals', (event) => {
+            const { page, query, isNewSearch } = event.detail;
+            this.loadPopupSignals(page, query, isNewSearch);
+        });
 
         // Sport filter inputs - reload sports when filters change
         this.setupSportFilterListeners();
@@ -125,6 +134,10 @@ class TestAutomationDesktopApp {
 
         document.getElementById('popup-close-btn').addEventListener('click', () => {
             this.handlePopupCancel();
+        });
+
+        document.getElementById('popup-open-location-btn').addEventListener('click', () => {
+            this.openScreenshotLocation();
         });
 
         // IPC events from main process (optimized for speed)
@@ -350,6 +363,7 @@ class TestAutomationDesktopApp {
         // Set the selected value and store the ID
         input.value = text;
         input.dataset.value = value;
+        
         
         // Trigger change event so other handlers can react
         const changeEvent = new Event('change', { bubbles: true });
@@ -956,12 +970,143 @@ class TestAutomationDesktopApp {
         this.showNotification(`Signal selected: ${text}`, 'success');
     }
 
+    setupCreateSignalHandlers() {
+        // Show create signal form
+        document.getElementById('show-create-signal-btn').addEventListener('click', () => {
+            this.showCreateSignalForm();
+        });
+
+        // Cancel create signal
+        document.getElementById('cancel-create-signal-btn').addEventListener('click', () => {
+            this.hideCreateSignalForm();
+        });
+
+        document.getElementById('cancel-create-signal-btn2').addEventListener('click', () => {
+            this.hideCreateSignalForm();
+        });
+
+        // Create signal
+        document.getElementById('create-signal-btn').addEventListener('click', () => {
+            this.createNewSignal();
+        });
+    }
+
+    showCreateSignalForm() {
+        // Hide signal dropdown and show create form
+        document.getElementById('popup-signal-dropdown').classList.add('hidden');
+        document.getElementById('create-signal-section').classList.remove('hidden');
+        document.getElementById('show-create-signal-btn').classList.add('hidden');
+        
+        // Clear form
+        document.getElementById('new-signal-name').value = '';
+        document.getElementById('new-signal-description').value = '';
+        
+        // Focus on signal name input
+        document.getElementById('new-signal-name').focus();
+    }
+
+    hideCreateSignalForm() {
+        // Hide create form and show create button
+        document.getElementById('create-signal-section').classList.add('hidden');
+        document.getElementById('show-create-signal-btn').classList.remove('hidden');
+        
+        // Clear form
+        document.getElementById('new-signal-name').value = '';
+        document.getElementById('new-signal-description').value = '';
+    }
+
+    async createNewSignal() {
+        const signalName = document.getElementById('new-signal-name').value.trim();
+        const description = document.getElementById('new-signal-description').value.trim();
+
+        if (!signalName) {
+            this.showNotification('Please enter signal name', 'error');
+            document.getElementById('new-signal-name').focus();
+            return;
+        }
+
+        try {
+            this.showLoading('Creating signal...');
+
+            // Prepare signal data
+            const signalData = {
+                signal_name: signalName
+            };
+
+            if (description) {
+                signalData.description = description;
+            }
+
+            // Call API to create signal
+            const result = await ipcRenderer.invoke('create-signal', signalData);
+
+            if (result.success) {
+                // Set the newly created signal as selected
+                const input = document.getElementById('popup-signal');
+                input.value = result.data.signal_name;
+                input.dataset.value = result.data.id;
+                
+                // Hide create form
+                this.hideCreateSignalForm();
+                
+                // Show success
+                this.showNotification(`Signal "${signalName}" created successfully!`, 'success');
+            } else {
+                this.showNotification('Failed to create signal: ' + result.error, 'error');
+            }
+        } catch (error) {
+            this.showNotification('Error creating signal: ' + error.message, 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
     setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            // Check if popup is visible
+        // Remove existing event listener if any
+        if (this.keyboardHandler) {
+            document.removeEventListener('keydown', this.keyboardHandler);
+        }
+        
+        this.keyboardHandler = (e) => {
+            // Check if screenshot popup is visible
             const popup = document.getElementById('screenshot-popup');
-            const isPopupVisible = !popup.classList.contains('hidden');
+            const isPopupVisible = popup && !popup.classList.contains('hidden');
             
+            // Check if error popup is visible
+            const errorPopup = document.querySelector('.error-popup-fullscreen');
+            const isErrorPopupVisible = errorPopup !== null;
+            
+            // Debug logging only for Escape key
+            if (e.key === 'Escape') {
+                console.log('ESC key pressed - checking popups:', {
+                    isPopupVisible,
+                    isErrorPopupVisible,
+                    popupElement: popup,
+                    errorPopupElement: errorPopup,
+                    allErrorPopups: document.querySelectorAll('.error-popup-fullscreen'),
+                    allErrorPopupsLength: document.querySelectorAll('.error-popup-fullscreen').length,
+                    documentBody: document.body.innerHTML.includes('error-popup-fullscreen')
+                });
+            }
+            
+            // Handle Escape key - prioritize error popup if both are visible
+            if (e.key === 'Escape') {
+                if (isErrorPopupVisible) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Escape pressed - Closing error popup');
+                    errorPopup.remove();
+                    return;
+                } else if (isPopupVisible) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Escape pressed - Canceling screenshot');
+                    this.cancelScreenshot();
+                    return;
+                }
+            }
+            
+            // Handle other shortcuts only for screenshot popup
             if (isPopupVisible) {
                 // Ctrl+Shift+U = Upload Screenshot
                 if (e.ctrlKey && e.shiftKey && e.key === 'U') {
@@ -969,15 +1114,10 @@ class TestAutomationDesktopApp {
                     console.log('Ctrl+Shift+U pressed - Uploading screenshot');
                     this.uploadScreenshot();
                 }
-                
-                // Escape = Cancel
-                if (e.key === 'Escape') {
-                    e.preventDefault();
-                    console.log('Escape pressed - Canceling screenshot');
-                    this.cancelScreenshot();
-                }
             }
-        });
+        };
+        
+        document.addEventListener('keydown', this.keyboardHandler);
     }
 
     setupUploadQueue() {
@@ -1018,13 +1158,37 @@ class TestAutomationDesktopApp {
             const regionValue = regionInput.value || '';
             const regionName = regionValue.includes(' - ') ? regionValue.split(' - ')[0] : regionValue;
             
-            // Generate default bucket name: region/DD-MM-YYYY
+            // Get sport name for bucket name
+            const sportInput = document.getElementById('sport');
+            const sportValue = sportInput.value || '';
+            const sportName = sportValue.includes(' - ') ? sportValue.split(' - ')[0].trim() : sportValue.trim();
+            
+            // Generate default bucket name: region/DD-MM-YYYY/league - match_name - start_time
             const today = new Date();
             const day = today.getDate().toString().padStart(2, '0');
             const month = (today.getMonth() + 1).toString().padStart(2, '0');
             const year = today.getFullYear().toString();
             const dateStr = `${day}-${month}-${year}`;
-            const defaultBucketName = `${regionName}/${dateStr}`;
+            
+            // Create sport info part: league - match_name
+            let sportInfo = '';
+            if (sportName) {
+                // Extract league and match_name from sport value
+                const sportParts = sportValue.split(' - ');
+                if (sportParts.length >= 2) {
+                    const league = sportParts[0].trim();
+                    const matchName = sportParts[1].trim();
+                    sportInfo = `${league} ${matchName}`;
+                } else {
+                    sportInfo = sportName;
+                }
+            }
+            
+            // Build final bucket name
+            let defaultBucketName = `${regionName}/${dateStr}`;
+            if (sportInfo) {
+                defaultBucketName += `/${sportInfo}`;
+            }
             
             // Set default bucket name if empty
             const bucketInput = document.getElementById('bucket-name');
@@ -1032,9 +1196,7 @@ class TestAutomationDesktopApp {
                 bucketInput.value = defaultBucketName;
             }
             
-            // Get sport name for session
-            const sportValue = sportInput.value || '';
-            const sportName = sportValue.includes(' - ') ? sportValue.split(' - ')[0].trim() : sportValue.trim();
+            // Get sport name for session (reuse from above)
             
             console.log('DEBUG: sportName extracted:', sportName);
             
@@ -1324,9 +1486,14 @@ class TestAutomationDesktopApp {
         // 1. Tạo system notification trước
         this.showSystemNotification();
         
-        // 2. Tạo popup báo lỗi toàn màn hình
+        // 2. Xóa error popup cũ nếu có
+        const existingErrorPopups = document.querySelectorAll('.error-popup-fullscreen');
+        existingErrorPopups.forEach(popup => popup.remove());
+        
+        // 3. Tạo popup báo lỗi toàn màn hình
         const popup = document.createElement('div');
         popup.className = 'error-popup-fullscreen';
+        popup.tabIndex = -1; // Cho phép popup nhận focus
         popup.innerHTML = `
             <div class="error-popup-content-fullscreen">
                 <div class="error-popup-header-fullscreen">
@@ -1352,16 +1519,71 @@ class TestAutomationDesktopApp {
         
         document.body.appendChild(popup);
         
-        // 3. Thêm hiệu ứng âm thanh
+        // Focus vào popup để có thể nhận keyboard events
+        popup.focus();
+        
+        // 3. Sử dụng global keyboard shortcut thay vì event listener
+        const escHandler = (e) => {
+            console.log('Global ESC handler triggered, key:', e.key, 'target:', e.target);
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Global ESC key pressed - removing error popup');
+                popup.remove();
+                document.removeEventListener('keydown', escHandler);
+                return false;
+            }
+        };
+        
+        // Thêm global event listener
+        document.addEventListener('keydown', escHandler);
+        
+        // 6. Thêm IPC listener để nhận ESC key từ main process
+        const ipcEscHandler = () => {
+            console.log('IPC ESC key received - removing error popup');
+            popup.remove();
+            document.removeEventListener('keydown', escHandler);
+            document.removeEventListener('click', clickHandler);
+            ipcRenderer.removeListener('close-error-popup', ipcEscHandler);
+        };
+        ipcRenderer.on('close-error-popup', ipcEscHandler);
+        
+        // 4. Thêm click listener để đóng popup khi click outside
+        const clickHandler = (e) => {
+            if (e.target === popup) {
+                console.log('Clicked outside error popup - closing');
+                popup.remove();
+                document.removeEventListener('keydown', escHandler);
+                document.removeEventListener('click', clickHandler);
+            }
+        };
+        document.addEventListener('click', clickHandler);
+        
+        // 5. Thêm ESC key listener trực tiếp vào popup element
+        popup.addEventListener('keydown', (e) => {
+            console.log('Popup ESC key, key:', e.key);
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Popup ESC key pressed - removing popup');
+                popup.remove();
+                return false;
+            }
+        });
+        
+        // 4. Thêm hiệu ứng âm thanh
         this.playErrorSound();
         
-        // 4. Flash window để thu hút sự chú ý
+        // 5. Flash window để thu hút sự chú ý
         this.flashWindow();
         
-        // 5. Auto remove after 10 seconds (lâu hơn để user đọc)
+        // 7. Auto remove after 10 seconds (lâu hơn để user đọc)
         setTimeout(() => {
             if (popup.parentNode) {
                 popup.remove();
+                document.removeEventListener('keydown', escHandler);
+                document.removeEventListener('click', clickHandler);
+                ipcRenderer.removeListener('close-error-popup', ipcEscHandler);
             }
         }, 10000);
     }
@@ -1437,12 +1659,14 @@ class TestAutomationDesktopApp {
         }
         
         // Update any pending queue items with new URL
-        this.uploadQueue.forEach(item => {
-            if (item.status === 'uploading') {
-                console.log('🔄 Updating queue item URL from', item.url, 'to', url);
-                item.url = url;
-            }
-        });
+        if (this.uploadQueue && Array.isArray(this.uploadQueue)) {
+            this.uploadQueue.forEach(item => {
+                if (item.status === 'uploading') {
+                    console.log('🔄 Updating queue item URL from', item.url, 'to', url);
+                    item.url = url;
+                }
+            });
+        }
         
         // Check if URL already exists in database
         try {
@@ -1493,12 +1717,33 @@ class TestAutomationDesktopApp {
         
         // Clean up screenshot file
         if (this.screenshotData && this.screenshotData.path) {
-            // Note: In a real app, you might want to delete the temp file
-            console.log('Screenshot cancelled, file:', this.screenshotData.path);
+            console.log('Screenshot cancelled, deleting file:', this.screenshotData.path);
+            // Delete the screenshot file
+            ipcRenderer.invoke('delete-file', this.screenshotData.path).then(() => {
+                console.log('Screenshot file deleted successfully');
+            }).catch(error => {
+                console.error('Failed to delete screenshot file:', error);
+            });
         }
         
         this.screenshotData = null;
         this.showNotification('Screenshot cancelled', 'info');
+    }
+
+    openScreenshotLocation() {
+        if (this.screenshotData && this.screenshotData.path) {
+            console.log('Opening screenshot file:', this.screenshotData.path);
+            
+            // Open the specific screenshot file
+            ipcRenderer.invoke('open-file', this.screenshotData.path).then(() => {
+                console.log('Screenshot file opened successfully');
+            }).catch(error => {
+                console.error('Failed to open screenshot file:', error);
+                this.showNotification('Failed to open screenshot file', 'error');
+            });
+        } else {
+            this.showNotification('No screenshot data available', 'warning');
+        }
     }
 
     async uploadScreenshotFromPopup() {
