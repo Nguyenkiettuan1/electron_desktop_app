@@ -1387,3 +1387,64 @@ body {
   border-radius: 10px;
   border: 1px solid #e9ecef;
 }
+
+/* Create Signal Section */
+.create-signal-section {
+  background: #f8f9fa;
+  border: 2px dashed #007bff;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 15px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.create-signal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.create-signal-header h4 {
+  color: #007bff;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.create-signal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.signal-actions {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.btn-outline-primary {
+  background: transparent;
+  color: #007bff;
+  border: 2px solid #007bff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+  background: #007bff;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 123, 255, 0.3);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}

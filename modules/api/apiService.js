@@ -203,6 +203,25 @@ class ApiService {
             };
         }
     }
+
+    async createSignal(signalData) {
+        try {
+            console.log('🔔 Creating new signal:', signalData);
+            const response = await axios.post(`${this.apiBaseUrl}/signals`, signalData, {
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            return { success: true, data: response.data };
+        } catch (error) {
+            console.error('❌ Error creating signal:', error.response?.data || error.message);
+            return { 
+                success: false, 
+                error: error.response?.data?.detail || error.message 
+            };
+        }
+    }
 }
 
 module.exports = ApiService;
