@@ -1,6 +1,6 @@
 {
   "name": "test-automation-screen-auto",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Modern Desktop App for Test Automation Screen Auto",
   "main": "main.js",
   "scripts": {
