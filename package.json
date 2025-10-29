@@ -1,6 +1,6 @@
 {
   "name": "test-automation-screen-auto",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Modern Desktop App for Test Automation Screen Auto",
   "main": "main.js",
   "scripts": {
@@ -10,9 +10,17 @@
     "dist": "electron-builder --publish=never",
     "build-win": "electron-builder --win",
     "build-win-portable": "electron-builder --win portable",
-    "build-simple": "electron-builder --win portable --config.win.sign=false",
+    "build-simple": "electron-builder --win --config.directories.output=dist --config.win.target=portable --config.win.sign=null",
     "pack": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
-    "pack-portable": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --asar"
+    "pack-portable": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --asar",
+    "build-portable": "node build-portable.js",
+    "publish": "electron-builder --win --publish always",
+    "release:patch": "node release.js patch",
+    "release:minor": "node release.js minor",
+    "release:major": "node release.js major",
+    "release-portable:patch": "node release-portable.js patch",
+    "release-portable:minor": "node release-portable.js minor",
+    "release-portable:major": "node release-portable.js major"
   },
   "keywords": [
     "test-automation",
@@ -22,19 +30,27 @@
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
+    "archiver": "^7.0.1",
     "electron": "^27.0.0",
     "electron-builder": "^24.6.0",
     "electron-packager": "^17.1.2"
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "electron-store": "^8.1.0"
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.6.2"
   },
   "build": {
     "appId": "com.testautomation.screenauto",
     "productName": "Test Automation Screen Auto",
     "directories": {
       "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Nguyenkiettuan1",
+      "repo": "electron_desktop_app",
+      "releaseType": "release"
     },
     "files": [
       "**/*",
@@ -47,10 +63,24 @@
       "!env.example"
     ],
     "win": {
-      "target": "dir",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "sign": false,
       "verifyUpdateCodeSignature": false,
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "artifactName": "${productName}-${version}.${ext}"
     },
     "mac": {
       "target": "dmg"
@@ -61,9 +91,17 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "allowElevation": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Test Automation Screen Auto"
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "Test Automation Screen Auto",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
     }
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
