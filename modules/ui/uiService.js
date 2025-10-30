@@ -4,7 +4,9 @@ const { ipcRenderer } = require('electron');
 class UiService {
     constructor() {
         this.uploadQueue = [];
+        this.notificationTimeout = null;
         this.setupUploadQueue();
+        this.setupNotificationClose();
     }
 
     setupUploadQueue() {
@@ -21,7 +23,21 @@ class UiService {
         }
     }
 
-    showNotification(message, type = 'info') {
+    setupNotificationClose() {
+        const closeBtn = document.getElementById('notification-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                const notification = document.getElementById('notification');
+                notification.classList.add('hidden');
+                if (this.notificationTimeout) {
+                    clearTimeout(this.notificationTimeout);
+                    this.notificationTimeout = null;
+                }
+            });
+        }
+    }
+
+    async showNotification(message, type = 'info') {
         const notification = document.getElementById('notification');
         const text = document.getElementById('notification-text');
         
@@ -29,10 +45,29 @@ class UiService {
         notification.className = `notification ${type}`;
         notification.classList.remove('hidden');
 
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            notification.classList.add('hidden');
-        }, 5000);
+        // Clear any existing timeout
+        if (this.notificationTimeout) {
+            clearTimeout(this.notificationTimeout);
+            this.notificationTimeout = null;
+        }
+
+        // Auto-hide only for success and info, errors persist forever
+        if (type === 'success' || type === 'info') {
+            // Get notification duration from settings
+            let duration = 15000; // Default 15 seconds
+            try {
+                const { ipcRenderer } = require('electron');
+                const settings = await ipcRenderer.invoke('get-settings');
+                duration = settings.notificationDuration || 15000;
+            } catch (error) {
+                console.error('Failed to get notification duration from settings:', error);
+            }
+            
+            this.notificationTimeout = setTimeout(() => {
+                notification.classList.add('hidden');
+            }, duration);
+        }
+        // Errors don't auto-hide - user must manually close them
     }
 
     showLoading(message) {
@@ -314,9 +349,9 @@ class UiService {
             }
             
             // Step 1: Check if URL already exists (required for accuracy)
-            console.log('🔍 Checking URL existence:', url);
+            console.log('🔍 Checking URL existence:', { url, sportId });
             const { ipcRenderer } = require('electron');
-            const urlCheckResult = await ipcRenderer.invoke('check-url-exists', url);
+            const urlCheckResult = await ipcRenderer.invoke('check-url-exists', { url, sportId });
             
             if (urlCheckResult.success && urlCheckResult.exists) {
                 console.log('❌ URL already exists in database');
@@ -373,6 +408,17 @@ class UiService {
                 this.showNotification(`📁 Local file kept: ${filePath}`, 'info');
                 console.log('✅ Upload completed successfully');
                 console.log('📁 Original file preserved:', filePath);
+                
+                // Auto minimize to tray after successful upload (if enabled in settings)
+                setTimeout(async () => {
+                    const { ipcRenderer } = require('electron');
+                    const settings = await ipcRenderer.invoke('get-settings');
+                    
+                    if (settings.autoMinimizeAfterUpload) {
+                        await ipcRenderer.invoke('minimize-to-tray');
+                        console.log('🔽 App minimized to tray after successful upload');
+                    }
+                }, 1000); // Wait 1 second to let user see success message
             } else {
                 // Error - update queue item and show error popup
                 queueItem.status = 'error';

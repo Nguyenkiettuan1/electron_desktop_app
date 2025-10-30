@@ -29,7 +29,7 @@ modules/
   - `login(credentials)` - Đăng nhập
   - `getCurrentUser()` - Lấy thông tin user hiện tại
   - `getRegions()`, `getSignals()`, `getSports()` - Lấy dữ liệu
-  - `checkUrlExists(url)` - Kiểm tra URL đã tồn tại
+  - `checkUrlExists(url, sportId)` - Kiểm tra URL đã tồn tại trong sport cụ thể
   - `createDetectedLink()` - Tạo detected link
   - `uploadScreenshot()` - Upload screenshot
 

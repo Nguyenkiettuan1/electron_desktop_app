@@ -5,6 +5,7 @@ const config = require('./app.config');
 // Import modules
 const UiService = require('./modules/ui/uiService');
 const SessionService = require('./modules/session/sessionService');
+const SettingsUIHandler = require('./modules/settings/settingsUIHandler');
 
 class TestAutomationDesktopApp {
     constructor() {
@@ -13,9 +14,14 @@ class TestAutomationDesktopApp {
         this.signals = [];
         this.apiBaseUrl = config.apiBaseUrl; // Use config from app.config.js
         
+        // Store sport data for bucket name
+        this.currentLeague = null;
+        this.currentMatchName = null;
+        
         // Initialize services
         this.uiService = new UiService();
         this.sessionService = new SessionService();
+        this.settingsUIHandler = new SettingsUIHandler();
         
         this.init();
     }
@@ -177,6 +183,13 @@ class TestAutomationDesktopApp {
 
         ipcRenderer.on('trigger-cancel', (event) => {
             this.cancelScreenshot();
+        });
+
+        // Listen for open settings from tray menu
+        ipcRenderer.on('open-settings', () => {
+            if (this.settingsUIHandler) {
+                this.settingsUIHandler.openSettings();
+            }
         });
     }
 
@@ -355,6 +368,29 @@ class TestAutomationDesktopApp {
         });
     }
 
+    parseAndStoreSportData(sportText) {
+        // Parse sport data from format: "PL 25_26 - 18/10/2025 18:29 - Nottingham Forest - Chelsea"
+        if (sportText && sportText.includes(' - ')) {
+            const sportParts = sportText.split(' - ');
+            if (sportParts.length >= 3) {
+                this.currentLeague = sportParts[0].trim(); // "PL 25_26"
+                // Join all parts from index 2 onwards to get full match name
+                this.currentMatchName = sportParts.slice(2).join(' - ').trim(); // "Nottingham Forest - Chelsea"
+                
+                console.log('🏈 Sport data parsed:', {
+                    league: this.currentLeague,
+                    matchName: this.currentMatchName,
+                    fullText: sportText,
+                    parts: sportParts
+                });
+            }
+        } else {
+            // Clear if no valid format
+            this.currentLeague = null;
+            this.currentMatchName = null;
+        }
+    }
+
     selectOption(option, inputId) {
         const value = option.dataset.value;
         const text = option.textContent;
@@ -364,6 +400,10 @@ class TestAutomationDesktopApp {
         input.value = text;
         input.dataset.value = value;
         
+        // Parse and store sport data when sport is selected
+        if (inputId === 'sport') {
+            this.parseAndStoreSportData(text);
+        }
         
         // Trigger change event so other handlers can react
         const changeEvent = new Event('change', { bubbles: true });
@@ -639,6 +679,10 @@ class TestAutomationDesktopApp {
         this.screenshotData = null;
         this.accessToken = null;
         
+        // Clear stored sport data
+        this.currentLeague = null;
+        this.currentMatchName = null;
+        
         // Clear session service
         this.sessionService.resetSession();
         
@@ -688,6 +732,7 @@ class TestAutomationDesktopApp {
         
         this.showNotification('Logged out successfully', 'info');
     }
+
 
     showMainInterface(user) {
         this.uiService.showMainInterface(user);
@@ -864,11 +909,24 @@ class TestAutomationDesktopApp {
             
             if (sportsResponse.data && sportsResponse.data.length > 0) {
                 console.log('Loading sports:', sportsResponse.data);
-            sportsResponse.data.forEach(sport => {
+                sportsResponse.data.forEach(sport => {
                     const option = document.createElement('div');
                     option.className = 'sport-option';
                     option.dataset.value = sport.id;
-                    option.textContent = `${sport.league} - ${sport.match_name}`;
+
+                    // Format start_time yyyy-mm-dd => dd/mm/yyyy
+                    let formattedStartTime = sport.start_time;
+                    if (formattedStartTime && /^\d{4}-\d{2}-\d{2}/.test(formattedStartTime)) {
+                        // Only transform the date part if present at front
+                        const dateParts = formattedStartTime.split(' ')[0].split('-');
+                        if (dateParts.length === 3) {
+                            formattedStartTime = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` +
+                                (sport.start_time.length > 10 ? sport.start_time.slice(10) : '');
+                        }
+                    }
+
+                    // Highlight important info: start time (bold), league (bold), match name (bold)
+                    option.innerHTML = `<b>${sport.league}</b> - <b>${formattedStartTime}</b> - <b>${sport.match_name}</b>`;
                     
                     option.addEventListener('click', () => {
                         this.selectOption(option, 'sport');
@@ -889,15 +947,15 @@ class TestAutomationDesktopApp {
             }
             
             if (isNewSearch) {
-            this.showNotification('Sports loaded successfully', 'success');
+                this.showNotification('Sports loaded successfully', 'success');
             }
         } catch (error) {
             if (isNewSearch) {
-            this.showNotification('Failed to load sports: ' + error.message, 'error');
+                this.showNotification('Failed to load sports: ' + error.message, 'error');
             }
         } finally {
             if (isNewSearch) {
-            this.hideLoading();
+                this.hideLoading();
             }
         }
     }
@@ -1158,31 +1216,28 @@ class TestAutomationDesktopApp {
             const regionValue = regionInput.value || '';
             const regionName = regionValue.includes(' - ') ? regionValue.split(' - ')[0] : regionValue;
             
-            // Get sport name for bucket name
-            const sportInput = document.getElementById('sport');
-            const sportValue = sportInput.value || '';
-            const sportName = sportValue.includes(' - ') ? sportValue.split(' - ')[0].trim() : sportValue.trim();
+            // Use stored sport data for bucket name
+            let sportInfo = '';
+            if (this.currentLeague && this.currentMatchName) {
+                sportInfo = `${this.currentLeague} ${this.currentMatchName}`;
+                console.log('🏈 Using stored sport data:', {
+                    league: this.currentLeague,
+                    matchName: this.currentMatchName,
+                    sportInfo: sportInfo
+                });
+            } else {
+                console.log('⚠️ No stored sport data, using fallback');
+                const sportInput = document.getElementById('sport');
+                const sportValue = sportInput.value || '';
+                sportInfo = sportValue;
+            }
             
-            // Generate default bucket name: region/DD-MM-YYYY/league - match_name - start_time
+            // Generate default bucket name: region/DD-MM-YYYY/league match_name
             const today = new Date();
             const day = today.getDate().toString().padStart(2, '0');
             const month = (today.getMonth() + 1).toString().padStart(2, '0');
             const year = today.getFullYear().toString();
             const dateStr = `${day}-${month}-${year}`;
-            
-            // Create sport info part: league - match_name
-            let sportInfo = '';
-            if (sportName) {
-                // Extract league and match_name from sport value
-                const sportParts = sportValue.split(' - ');
-                if (sportParts.length >= 2) {
-                    const league = sportParts[0].trim();
-                    const matchName = sportParts[1].trim();
-                    sportInfo = `${league} ${matchName}`;
-                } else {
-                    sportInfo = sportName;
-                }
-            }
             
             // Build final bucket name
             let defaultBucketName = `${regionName}/${dateStr}`;
@@ -1196,17 +1251,23 @@ class TestAutomationDesktopApp {
                 bucketInput.value = defaultBucketName;
             }
             
-            // Get sport name for session (reuse from above)
+            // Get sport name for session - use stored data or fallback
+            const sportNameForSession = sportInfo || sportValue;
             
-            console.log('DEBUG: sportName extracted:', sportName);
+            console.log('DEBUG: sportName extracted:', sportNameForSession);
             
             // Use session service to start session
-            const result = this.sessionService.startSession(regionId, sportId, sportName);
+            const result = this.sessionService.startSession(regionId, sportId, sportNameForSession);
             
             if (result.success) {
                 // Update UI
                 this.updateSessionStatus('active');
                 this.showNotification('Session started! Press Ctrl+Shift+Q to take screenshots.', 'success');
+                
+                // Send session data to main process for global shortcuts
+                const sessionData = this.sessionService.getSessionData();
+                await ipcRenderer.invoke('set-session-data', sessionData);
+                console.log('✅ Session data sent to main process:', sessionData);
             } else {
                 this.showNotification('Failed to start session: ' + result.error, 'error');
             }
@@ -1222,6 +1283,11 @@ class TestAutomationDesktopApp {
             const result = this.sessionService.stopSession();
             
             if (result.success) {
+                // Clear stored sport data
+                this.currentLeague = null;
+                this.currentMatchName = null;
+                console.log('🧹 Cleared stored sport data');
+                
                 // Update UI
                 this.updateSessionStatus('Not Started');
                 this.showNotification('Session stopped. You can start a new session.', 'info');
@@ -1668,16 +1734,27 @@ class TestAutomationDesktopApp {
             });
         }
         
-        // Check if URL already exists in database
+        // Check if URL already exists in database (with sport context)
         try {
-            console.log('🔍 Checking URL existence:', url);
-            const urlCheckResult = await ipcRenderer.invoke('check-url-exists', url);
+            // Get current sport ID from session
+            const sessionData = this.sessionService.getSessionData();
+            const sportId = sessionData?.sportId;
+            
+            console.log('🔍 Checking URL existence:', { url, sportId });
+            
+            if (!sportId) {
+                console.warn('⚠️ No sport ID available, skipping URL check');
+                this.showNotification('⚠️ Please start a session first before checking URL.', 'warning');
+                return;
+            }
+            
+            const urlCheckResult = await ipcRenderer.invoke('check-url-exists', { url, sportId });
             
             if (urlCheckResult.success && urlCheckResult.exists) {
-                console.log('❌ URL already exists in database');
-                this.showNotification('⚠️ URL already exists in database! Please navigate to a different URL.', 'error');
+                console.log('❌ URL already exists in database for this sport!');
+                this.showNotification('⚠️ URL already exists in this sport! Please use a different URL.', 'error');
             } else {
-                console.log('✅ URL is new, ready for screenshot');
+                console.log('✅ URL is new for this sport, ready for screenshot');
                 this.showNotification('✅ URL is new, ready for screenshot!', 'success');
             }
         } catch (error) {

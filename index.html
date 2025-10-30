@@ -45,7 +45,12 @@
           <!-- User Info -->
           <div class="user-info">
             <h3>👤 Welcome, <span id="user-name"></span></h3>
-            <button id="logout-btn" class="btn btn-secondary">Logout</button>
+            <div style="display: flex; gap: 10px">
+              <button id="settings-btn" class="btn btn-secondary">
+                ⚙️ Settings
+              </button>
+              <button id="logout-btn" class="btn btn-secondary">Logout</button>
+            </div>
           </div>
 
           <!-- Workflow Steps -->
@@ -403,6 +408,117 @@
       <div class="notification-content">
         <span id="notification-text"></span>
         <button id="notification-close">✖</button>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="settings-modal hidden">
+      <div class="settings-overlay"></div>
+      <div class="settings-content">
+        <div class="settings-header">
+          <h2>⚙️ Settings</h2>
+          <button id="settings-close-btn" class="settings-close">✖</button>
+        </div>
+        <div class="settings-body">
+          <!-- Keyboard Shortcuts Section -->
+          <div class="settings-section">
+            <h3>⌨️ Keyboard Shortcuts</h3>
+            <div class="shortcut-help">
+              <strong>💡 Supported Keys:</strong><br />
+              • Letters: A-Z<br />
+              • Numbers: 0-9<br />
+              • Function keys: F1-F24<br />
+              • Special keys: PrintScreen, Home, End, Insert, Delete, PageUp,
+              PageDown<br />
+              • Arrow keys: Up, Down, Left, Right<br />
+              • Modifiers: Ctrl, Alt, Shift (can combine)<br />
+              • Other: Escape, Tab, Enter, Space, Backspace
+            </div>
+            <div class="settings-group">
+              <div class="settings-item">
+                <label for="shortcut-screenshot">Take Screenshot:</label>
+                <input
+                  type="text"
+                  id="shortcut-screenshot"
+                  class="shortcut-input"
+                  readonly
+                  placeholder="Click to set shortcut"
+                />
+                <button class="btn-reset" data-shortcut="takeScreenshot">
+                  Reset
+                </button>
+              </div>
+              <div class="settings-item">
+                <label for="shortcut-upload">Upload Screenshot:</label>
+                <input
+                  type="text"
+                  id="shortcut-upload"
+                  class="shortcut-input"
+                  readonly
+                  placeholder="Click to set shortcut"
+                />
+                <button class="btn-reset" data-shortcut="uploadScreenshot">
+                  Reset
+                </button>
+              </div>
+              <div class="settings-item">
+                <label for="shortcut-cancel">Cancel/Escape:</label>
+                <input
+                  type="text"
+                  id="shortcut-cancel"
+                  class="shortcut-input"
+                  readonly
+                  placeholder="Click to set shortcut"
+                />
+                <button class="btn-reset" data-shortcut="cancelAction">
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- General Settings Section -->
+          <div class="settings-section">
+            <h3>🔧 General Settings</h3>
+            <div class="settings-group">
+              <div class="settings-item">
+                <label>
+                  <input type="checkbox" id="auto-minimize-checkbox" />
+                  Auto-minimize to tray after upload
+                </label>
+              </div>
+              <div class="settings-item">
+                <label>
+                  <input type="checkbox" id="check-updates-checkbox" />
+                  Check for updates on startup
+                </label>
+              </div>
+              <div class="settings-item">
+                <label for="notification-duration"
+                  >Success notification duration (seconds):</label
+                >
+                <input
+                  type="number"
+                  id="notification-duration"
+                  min="5"
+                  max="60"
+                  value="15"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-footer">
+          <button id="settings-save-btn" class="btn btn-primary">
+            Save Settings
+          </button>
+          <button id="settings-reset-all-btn" class="btn btn-danger">
+            Reset All
+          </button>
+          <button id="settings-cancel-btn" class="btn btn-secondary">
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
 

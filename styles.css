@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #f5f7fa;
     color: #333;
     overflow: hidden;
     height: 100vh;
@@ -22,10 +22,10 @@ body {
 
 /* Header */
 .app-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #2c3e50;
     color: white;
     padding: 0;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     -webkit-app-region: drag;
 }
 
@@ -78,10 +78,10 @@ body {
 
 .section {
     background: white;
-    border-radius: 15px;
+    border-radius: 12px;
     padding: 30px;
     margin-bottom: 20px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     border: 1px solid #e9ecef;
 }
 
@@ -180,7 +180,7 @@ body {
 .login-form button {
     width: 100%;
     padding: 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #3498db;
     color: white;
     border: none;
     border-radius: 12px;
@@ -211,7 +211,8 @@ body {
 
 .login-form button:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 8px 16px rgba(52, 152, 219, 0.3);
+    background: #2980b9;
 }
 
 .login-form button:active {
@@ -489,22 +490,22 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #3498db;
     color: white;
 }
 
 .btn-success {
-    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    background: #27ae60;
     color: white;
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    background: #e74c3c;
     color: white;
 }
 
 .btn-secondary {
-    background: #6c757d;
+    background: #95a5a6;
     color: white;
 }
 
@@ -528,7 +529,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #34495e;
     color: white;
     padding: 20px;
     border-radius: 10px;
@@ -548,10 +549,11 @@ body {
 }
 
 .workflow-step {
-    background: #f8f9fa;
+    background: #ffffff;
     border-radius: 10px;
     padding: 25px;
-    border-left: 5px solid #667eea;
+    border-left: 4px solid #3498db;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .step-header {
@@ -1447,4 +1449,223 @@ body {
 .btn-sm {
   padding: 6px 12px;
   font-size: 0.8rem;
+}
+
+/* Settings Modal */
+.settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.settings-content {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-width: 700px;
+  width: 90%;
+  max-height: 85vh;
+  overflow: hidden;
+  animation: settingsSlideIn 0.3s ease-out;
+}
+
+@keyframes settingsSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 2px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.settings-header h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.settings-close:hover {
+  background: #e9ecef;
+  color: #2c3e50;
+}
+
+.settings-body {
+  padding: 25px;
+  max-height: calc(85vh - 160px);
+  overflow-y: auto;
+}
+
+.settings-section {
+  margin-bottom: 30px;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section h3 {
+  color: #34495e;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  gap: 15px;
+}
+
+.settings-item label {
+  font-weight: 500;
+  color: #495057;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.settings-item input[type="number"] {
+  width: 80px;
+  padding: 8px 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.shortcut-input {
+  flex: 1;
+  max-width: 250px;
+  padding: 10px 15px;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.shortcut-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+  background: #f0f8ff;
+}
+
+.shortcut-input.recording {
+  border-color: #e74c3c;
+  background: #fff5f5;
+  animation: pulse 1s infinite;
+}
+
+.btn-reset {
+  padding: 8px 16px;
+  background: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reset:hover {
+  background: #7f8c8d;
+  transform: translateY(-1px);
+}
+
+.settings-footer {
+  display: flex;
+  gap: 10px;
+  padding: 20px 25px;
+  border-top: 2px solid #e9ecef;
+  background: #f8f9fa;
+  justify-content: flex-end;
+}
+
+.settings-footer .btn {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+/* Help text for shortcuts */
+.shortcut-help {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 10px;
+  padding: 10px;
+  background: #e7f3ff;
+  border-left: 3px solid #3498db;
+  border-radius: 4px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
