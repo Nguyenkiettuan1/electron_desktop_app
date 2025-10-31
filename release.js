@@ -144,7 +144,8 @@ function performRelease(pkg, oldVersion, newVersion) {
         // Step 5: Check files
         log('\n📝 Step 5: Checking build files...', 'cyan');
         const distDir = path.join(__dirname, 'dist');
-        const exeFile = `test-automation-screen-auto-${newVersion}.exe`;
+        // Match actual file names from electron-builder
+        const exeFile = `Test Automation Screen Auto-Setup-${newVersion}.exe`;
         const blockmapFile = `${exeFile}.blockmap`;
         const ymlFile = 'latest.yml';
         

@@ -77,10 +77,12 @@
           ]
         }
       ],
-      "sign": false,
+      "sign": null,
       "verifyUpdateCodeSignature": false,
       "requestedExecutionLevel": "asInvoker",
-      "artifactName": "${productName}-${version}.${ext}"
+      "artifactName": "${productName}-${version}.${ext}",
+      "certificateFile": null,
+      "certificatePassword": null
     },
     "mac": {
       "target": "dmg"
