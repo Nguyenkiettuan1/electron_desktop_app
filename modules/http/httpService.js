@@ -8,6 +8,7 @@ class HttpService {
         this.isRequestingUrl = false;
         this.currentUrl = null;
         this.mainWindow = null;
+        this.lastUrlRequest = null; // Track most recent URL request to prevent stale requests
     }
 
     setMainWindow(window) {
@@ -71,21 +72,49 @@ class HttpService {
         req.on('end', () => {
             try {
                 const data = JSON.parse(body);
-                console.log('URL received from browser extension:', data.url);
+                const receivedUrl = data.url;
+                const receivedTabId = data.tabId;
+                const receivedTimestamp = data.timestamp ? new Date(data.timestamp).getTime() : Date.now();
                 
-                // Store the URL
-                this.currentUrl = data.url;
-                this.isRequestingUrl = false;
+                console.log('🔍 URL received from browser extension:', {
+                    url: receivedUrl,
+                    tabId: receivedTabId,
+                    timestamp: new Date(receivedTimestamp).toISOString()
+                });
                 
-                // Send to renderer process
-                if (this.mainWindow) {
-                    this.mainWindow.webContents.send('url-detected', data.url);
+                // Track the most recent URL request
+                if (!this.lastUrlRequest || receivedTimestamp > this.lastUrlRequest.timestamp) {
+                    console.log('✅ Accepting URL from active tab:', receivedUrl);
+                    
+                    // Store the URL
+                    this.currentUrl = receivedUrl;
+                    this.isRequestingUrl = false;
+                    this.lastUrlRequest = {
+                        url: receivedUrl,
+                        tabId: receivedTabId,
+                        timestamp: receivedTimestamp
+                    };
+                    
+                    // Send to renderer process
+                    if (this.mainWindow) {
+                        this.mainWindow.webContents.send('url-detected', receivedUrl);
+                    }
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, accepted: true }));
+                } else {
+                    console.log('⏭️ Ignoring stale URL request:', {
+                        received: receivedUrl,
+                        lastAccepted: this.lastUrlRequest.url,
+                        timeDiff: receivedTimestamp - this.lastUrlRequest.timestamp
+                    });
+                    
+                    // Still respond success but don't update
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, accepted: false, reason: 'stale_request' }));
                 }
-                
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true }));
             } catch (error) {
-                console.error('Error parsing URL data:', error);
+                console.error('❌ Error parsing URL data:', error);
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
             }

@@ -156,6 +156,14 @@ class TestAutomationDesktopApp {
             this.hideLoading();
         });
 
+        // Track if window was visible before screenshot (for auto-minimize logic)
+        ipcRenderer.on('screenshot-visibility-state', (event, data) => {
+            if (this.uiService) {
+                this.uiService.wasVisibleBeforeScreenshot = data.wasVisibleBeforeScreenshot;
+                console.log('📊 Window visibility state before screenshot:', data.wasVisibleBeforeScreenshot);
+            }
+        });
+
         ipcRenderer.on('url-already-exists', (event, data) => {
             this.showErrorPopup(data.message);
         });

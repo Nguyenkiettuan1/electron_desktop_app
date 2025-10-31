@@ -414,8 +414,13 @@ class TestAutomationApp {
             
             console.log('✅ URL is new, proceeding with screenshot');
             
-            // Hide main window temporarily
-            this.mainWindow.hide();
+            // Remember if window was visible before screenshot
+            const wasVisibleBeforeScreenshot = this.mainWindow.isVisible();
+            
+            // Hide main window temporarily (only if it was visible)
+            if (wasVisibleBeforeScreenshot) {
+                this.mainWindow.hide();
+            }
             
             // Wait for screen to stabilize
             await new Promise(resolve => setTimeout(resolve, 300));
@@ -428,8 +433,11 @@ class TestAutomationApp {
             
             // Handle screenshot result
             if (screenshotResult) {
-                // Send screenshot data
-                this.mainWindow.webContents.send('screenshot-taken', screenshotResult);
+                // Send screenshot data with visibility state
+                this.mainWindow.webContents.send('screenshot-taken', {
+                    ...screenshotResult,
+                    wasVisibleBeforeScreenshot // Pass this info to renderer
+                });
             } else {
                 console.error('Screenshot failed');
                 this.mainWindow.webContents.send('screenshot-failed', {
@@ -437,9 +445,16 @@ class TestAutomationApp {
                 });
             }
             
-            // Show main window
+            // ALWAYS show window after screenshot (user needs to see popup to upload)
+            // Whether triggered from tray or not, user must see the upload popup
             this.mainWindow.show();
             this.mainWindow.focus();
+            
+            // Store visibility state for auto-minimize logic AFTER upload
+            // If triggered from tray, minimize back after upload completes
+            this.mainWindow.webContents.send('screenshot-visibility-state', {
+                wasVisibleBeforeScreenshot
+            });
             
         } catch (error) {
             console.error('Screenshot failed:', error);
@@ -676,8 +691,25 @@ ipcMain.handle('minimize-window', async (event) => {
 
 ipcMain.handle('minimize-to-tray', async (event) => {
     if (testApp.mainWindow) {
-        testApp.mainWindow.hide();
+        // Only minimize if window is currently visible
+        // Don't minimize if already in tray (to avoid annoying behavior)
+        if (testApp.mainWindow.isVisible()) {
+            testApp.mainWindow.hide();
+            return { success: true, minimized: true };
+        } else {
+            // Already in tray, don't do anything
+            return { success: true, minimized: false, alreadyHidden: true };
+        }
     }
+    return { success: false };
+});
+
+// Check if window is visible
+ipcMain.handle('is-window-visible', async (event) => {
+    if (testApp.mainWindow) {
+        return { visible: testApp.mainWindow.isVisible() };
+    }
+    return { visible: false };
 });
 
 ipcMain.handle('toggle-maximize-window', async (event) => {

@@ -396,7 +396,16 @@
     <div id="upload-queue" class="upload-queue hidden">
       <div class="queue-header">
         <h3>📤 Upload Queue</h3>
-        <button id="queue-toggle" class="queue-toggle">▼</button>
+        <div class="queue-header-actions">
+          <button
+            id="queue-clear-all"
+            class="queue-clear-all-btn"
+            title="Clear all items (except errors)"
+          >
+            🗑️ Clear All
+          </button>
+          <button id="queue-toggle" class="queue-toggle">▼</button>
+        </div>
       </div>
       <div id="queue-content" class="queue-content">
         <div id="queue-items"></div>
@@ -407,7 +416,16 @@
     <div id="notification" class="notification hidden">
       <div class="notification-content">
         <span id="notification-text"></span>
-        <button id="notification-close">✖</button>
+        <div class="notification-actions">
+          <button
+            id="notification-clear-all"
+            class="notification-btn"
+            title="Clear all notifications (except errors)"
+          >
+            🗑️ Clear All
+          </button>
+          <button id="notification-close">✖</button>
+        </div>
       </div>
     </div>
 

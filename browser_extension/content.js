@@ -90,102 +90,11 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// Auto-send URL when page changes (if enabled)
-setInterval(() => {
-    if (!autoSendEnabled) return;
-    
-    const currentUrl = window.location.href;
-    if (currentUrl !== lastSentUrl && currentUrl.startsWith('http')) {
-        console.log('URL changed, sending to Electron app:', currentUrl);
-        sendCurrentUrlToApp();
-        lastSentUrl = currentUrl;
-    }
-}, 1000); // Check every 1 second for faster response
+// ❌ REMOVED: Content script should NOT auto-send URLs
+// Only background.js should send URLs from active tab
+// This prevents multiple tabs from sending URLs simultaneously
 
-// Also send URL immediately when page loads (if enabled)
-console.log('Content script loaded, autoSendEnabled:', autoSendEnabled);
-if (autoSendEnabled) {
-    console.log('Page loaded, sending URL immediately...');
-    setTimeout(() => {
-        sendCurrentUrlToApp();
-    }, 1000);
-}
-
-// Force send URL for testing
-console.log('Force sending URL for testing...');
-setTimeout(() => {
-    sendCurrentUrlToApp();
-}, 1000);
-
-// Also send immediately
-console.log('Sending URL immediately...');
-sendCurrentUrlToApp();
-
-// Listen for tab changes and send URL immediately
-window.addEventListener('beforeunload', () => {
-    console.log('Tab unloading, sending URL...');
-    sendCurrentUrlToApp();
-});
-
-// Listen for page unload
-window.addEventListener('unload', () => {
-    console.log('Page unloading, sending URL...');
-    sendCurrentUrlToApp();
-});
-
-// Listen for page show (when tab becomes active)
-window.addEventListener('pageshow', () => {
-    if (!autoSendEnabled) return;
-    console.log('Page shown, sending URL...');
-    sendCurrentUrlToApp();
-});
-
-// Listen for page hide (when tab becomes inactive)
-window.addEventListener('pagehide', () => {
-    if (!autoSendEnabled) return;
-    console.log('Page hidden, sending URL...');
-    sendCurrentUrlToApp();
-});
-
-// Auto-send URL when page loads or becomes active (if enabled)
-window.addEventListener('load', () => {
-    if (!autoSendEnabled) return;
-    console.log('Page loaded, sending URL to Electron app...');
-    setTimeout(() => {
-        sendCurrentUrlToApp();
-    }, 500);
-});
-
-// Auto-send URL when tab becomes active (if enabled)
-document.addEventListener('visibilitychange', () => {
-    if (!autoSendEnabled) return;
-    if (!document.hidden) {
-        console.log('Tab became active, sending URL to Electron app...');
-        // Send immediately, no timeout
-        sendCurrentUrlToApp();``
-    }
-});
-
-// Auto-send URL when page focus (if enabled)
-window.addEventListener('focus', () => {
-    if (!autoSendEnabled) return;
-    console.log('Window focused, sending URL to Electron app...');
-    // Send immediately, no timeout
-    sendCurrentUrlToApp();
-});
-
-// Auto-send URL when window becomes active (if enabled)
-window.addEventListener('activate', () => {
-    if (!autoSendEnabled) return;
-    console.log('Window activated, sending URL to Electron app...');
-    sendCurrentUrlToApp();
-});
-
-// Auto-send URL when page becomes visible (if enabled)
-document.addEventListener('visibilitychange', () => {
-    if (!autoSendEnabled) return;
-    if (document.visibilityState === 'visible') {
-        console.log('Page became visible, sending URL to Electron app...');
-        sendCurrentUrlToApp();
-    }
-});
+// Content script only sends when:
+// 1. User manually triggers (keyboard shortcut Ctrl+Shift+U)
+// 2. Background script requests it via message
+// 3. Electron app requests it

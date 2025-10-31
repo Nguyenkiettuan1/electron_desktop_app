@@ -5,8 +5,11 @@ class UiService {
     constructor() {
         this.uploadQueue = [];
         this.notificationTimeout = null;
+        this.wasVisibleBeforeScreenshot = true; // Track if window was visible before screenshot
+        this.notificationHistory = []; // Track all notifications
         this.setupUploadQueue();
         this.setupNotificationClose();
+        this.setupNotificationClearAll();
     }
 
     setupUploadQueue() {
@@ -21,19 +24,70 @@ class UiService {
                 queueToggle.textContent = isCollapsed ? '−' : '+';
             });
         }
+
+        // Clear All button (remove all except errors)
+        const clearAllBtn = document.getElementById('queue-clear-all');
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', () => {
+                this.clearUploadQueueExceptErrors();
+            });
+        }
     }
 
     setupNotificationClose() {
         const closeBtn = document.getElementById('notification-close');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => {
-                const notification = document.getElementById('notification');
-                notification.classList.add('hidden');
-                if (this.notificationTimeout) {
-                    clearTimeout(this.notificationTimeout);
-                    this.notificationTimeout = null;
-                }
+                this.hideNotification();
             });
+        }
+    }
+
+    setupNotificationClearAll() {
+        const clearAllBtn = document.getElementById('notification-clear-all');
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', () => {
+                this.clearAllNotifications();
+            });
+        }
+    }
+
+    hideNotification() {
+        const notification = document.getElementById('notification');
+        notification.classList.add('hidden');
+        if (this.notificationTimeout) {
+            clearTimeout(this.notificationTimeout);
+            this.notificationTimeout = null;
+        }
+    }
+
+    clearAllNotifications() {
+        const notification = document.getElementById('notification');
+        const notificationType = notification.className.split(' ').find(cls => 
+            ['success', 'info', 'error', 'warning'].includes(cls)
+        );
+        
+        // Only clear if it's NOT an error
+        if (notificationType !== 'error') {
+            console.log('🗑️ Clearing all non-error notifications');
+            this.hideNotification();
+            
+            // Also clear from history
+            this.notificationHistory = this.notificationHistory.filter(n => n.type === 'error');
+            
+            // Show confirmation (briefly)
+            this.showNotification('✅ All notifications cleared (errors kept)', 'success');
+            setTimeout(() => {
+                const currentType = document.getElementById('notification').className.split(' ').find(cls => 
+                    ['success', 'info', 'error', 'warning'].includes(cls)
+                );
+                if (currentType !== 'error') {
+                    this.hideNotification();
+                }
+            }, 2000);
+        } else {
+            // If it's an error, show message that errors cannot be cleared
+            this.showNotification('⚠️ Error notifications cannot be cleared automatically. Please close them manually.', 'info');
         }
     }
 
@@ -41,9 +95,26 @@ class UiService {
         const notification = document.getElementById('notification');
         const text = document.getElementById('notification-text');
         
+        // Add to history
+        this.notificationHistory.push({
+            message,
+            type,
+            timestamp: Date.now()
+        });
+        
         text.textContent = message;
         notification.className = `notification ${type}`;
         notification.classList.remove('hidden');
+
+        // Show/hide Clear All button based on notification type
+        const clearAllBtn = document.getElementById('notification-clear-all');
+        if (clearAllBtn) {
+            if (type === 'error') {
+                clearAllBtn.style.display = 'none'; // Hide for errors
+            } else {
+                clearAllBtn.style.display = 'inline-block'; // Show for success/info
+            }
+        }
 
         // Clear any existing timeout
         if (this.notificationTimeout) {
@@ -64,7 +135,13 @@ class UiService {
             }
             
             this.notificationTimeout = setTimeout(() => {
-                notification.classList.add('hidden');
+                const currentType = notification.className.split(' ').find(cls => 
+                    ['success', 'info', 'error', 'warning'].includes(cls)
+                );
+                // Only auto-hide if still showing this notification (not replaced)
+                if (currentType === type || currentType === 'success' || currentType === 'info') {
+                    notification.classList.add('hidden');
+                }
             }, duration);
         }
         // Errors don't auto-hide - user must manually close them
@@ -308,6 +385,28 @@ class UiService {
         console.log('Upload queue cleared');
     }
 
+    clearUploadQueueExceptErrors() {
+        // Only remove success and uploading items, keep errors
+        const errorItems = this.uploadQueue.filter(item => item.status === 'error');
+        const removedCount = this.uploadQueue.length - errorItems.length;
+        
+        this.uploadQueue = errorItems; // Keep only error items
+        this.updateQueueDisplay();
+        
+        if (this.uploadQueue.length === 0) {
+            this.hideQueue();
+        }
+        
+        console.log(`🗑️ Cleared ${removedCount} items from queue (kept ${errorItems.length} error items)`);
+        
+        // Show notification
+        if (removedCount > 0) {
+            this.showNotification(`✅ Removed ${removedCount} item(s) from queue (${errorItems.length} error(s) kept)`, 'success');
+        } else {
+            this.showNotification('⚠️ No items to remove (only errors remain)', 'info');
+        }
+    }
+
     showErrorDetails(item) {
         const errorMsg = item.error || 'Unknown error occurred';
         this.showNotification(`Upload failed: ${errorMsg}`, 'error');
@@ -409,16 +508,20 @@ class UiService {
                 console.log('✅ Upload completed successfully');
                 console.log('📁 Original file preserved:', filePath);
                 
-                // Auto minimize to tray after successful upload (if enabled in settings)
-                setTimeout(async () => {
+                // Auto-minimize logic:
+                // - If window was visible before screenshot → KEEP visible (user was using app normally)
+                // - If window was hidden before screenshot (from tray) → MINIMIZE back to tray immediately
+                if (!this.wasVisibleBeforeScreenshot) {
+                    // User triggered from tray, minimize back after upload
                     const { ipcRenderer } = require('electron');
-                    const settings = await ipcRenderer.invoke('get-settings');
-                    
-                    if (settings.autoMinimizeAfterUpload) {
-                        await ipcRenderer.invoke('minimize-to-tray');
-                        console.log('🔽 App minimized to tray after successful upload');
-                    }
-                }, 1000); // Wait 1 second to let user see success message
+                    ipcRenderer.invoke('minimize-to-tray').then(result => {
+                        if (result && result.minimized) {
+                            console.log('🔽 App minimized back to tray after upload (triggered from tray)');
+                        }
+                    });
+                } else {
+                    console.log('⏭️ Window was visible before, keeping it visible');
+                }
             } else {
                 // Error - update queue item and show error popup
                 queueItem.status = 'error';
