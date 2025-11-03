@@ -1,6 +1,6 @@
 {
   "name": "test-automation-screen-auto",
-  "version": "1.0.9",
+  "version": "1.0.4",
   "description": "Modern Desktop App for Test Automation Screen Auto",
   "main": "main.js",
   "scripts": {
@@ -49,7 +49,7 @@
     "publish": {
       "provider": "github",
       "owner": "Nguyenkiettuan1",
-      "repo": "electron_desktop_app",
+      "repo": "phanlaw-capture",
       "releaseType": "release"
     },
     "files": [
