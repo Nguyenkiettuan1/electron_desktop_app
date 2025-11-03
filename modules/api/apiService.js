@@ -117,19 +117,18 @@ class ApiService {
             console.log('🔍 Checking URL existence:', { url, sportId });
             
             if (!this.accessToken) {
-                console.log('No access token, skipping URL check');
-                return { success: true, exists: false };
+                console.log('❌ No access token, cannot check URL');
+                return { success: false, exists: false, error: 'No access token available' };
             }
             
             if (!sportId) {
-                console.log('No sport ID provided, skipping URL check');
-                return { success: true, exists: false };
+                console.log('❌ No sport ID provided, cannot check URL');
+                return { success: false, exists: false, error: 'No sport ID provided' };
             }
             
-            // Use search API to find exact URL match with sport_id filter
-            // Note: Backend uses partial match (ilike) for url parameter
-            const queryParams = `url=${encodeURIComponent(url)}&sport_ids=${sportId}&page_size=10`;
-            const response = await axios.get(`${this.apiBaseUrl}/detected_links?${queryParams}`, {
+            // Use new check-exists API instead of pagination
+            const queryParams = `url=${encodeURIComponent(url)}&sport_id=${sportId}`;
+            const response = await axios.post(`${this.apiBaseUrl}/detected_links/check-exists?${queryParams}`, {}, {
                 headers: {
                     'Authorization': `Bearer ${this.accessToken}`,
                     'Content-Type': 'application/json'
@@ -138,45 +137,48 @@ class ApiService {
             
             console.log('🔍 API Response:', response.data);
             
-            if (response.data && response.data.data) {
-                const existingUrls = response.data.data;
-                console.log(`🔍 Found ${existingUrls.length} matching URLs for sport ${sportId}`);
+            if (response.data && typeof response.data === 'object') {
+                // API returns {id: true} if exists, or {url: false} if not exists
+                const keys = Object.keys(response.data);
+                const values = Object.values(response.data);
                 
-                // Check if any URL matches EXACTLY within the same sport
-                // Need to compare both url and sport_id as strings
-                const exactMatch = existingUrls.some(link => {
-                    const urlMatch = link.url === url;
-                    const sportMatch = String(link.sport_id) === String(sportId);
-                    console.log('🔍 Comparing:', {
-                        linkUrl: link.url,
-                        searchUrl: url,
-                        urlMatch,
-                        linkSportId: link.sport_id,
-                        searchSportId: sportId,
-                        sportMatch,
-                        bothMatch: urlMatch && sportMatch
-                    });
-                    return urlMatch && sportMatch;
-                });
+                let exists = false;
+                let detectedLinkId = null;
                 
-                console.log('🔍 URL exists check result (exact with sport):', exactMatch);
-                
-                if (exactMatch) {
-                    console.log('❌ URL ALREADY EXISTS in this sport!');
-                } else {
-                    console.log('✅ URL is NEW for this sport');
+                if (keys.length > 0) {
+                    const firstKey = keys[0];
+                    const firstValue = values[0];
+                    
+                    // If value is true, URL exists and key is the detected_link_id
+                    if (firstValue === true) {
+                        exists = true;
+                        detectedLinkId = firstKey;
+                        console.log('🔍 URL ALREADY EXISTS in this sport! Detected link ID:', detectedLinkId);
+                    } else if (firstValue === false) {
+                        exists = false;
+                        console.log('✅ URL is NEW for this sport');
+                    }
                 }
                 
-                return { success: true, exists: exactMatch };
+                return { 
+                    success: true, 
+                    exists: exists,
+                    detectedLinkId: detectedLinkId 
+                };
             } else {
-                console.log('🔍 No data in response, assuming URL does not exist for this sport');
-                return { success: true, exists: false };
+                console.log('❌ Invalid response format, cannot determine URL existence');
+                return { success: false, exists: false, error: 'Invalid response format from API' };
             }
             
         } catch (error) {
             console.error('❌ Error checking URL existence:', error);
             console.error('Error details:', error.response?.data || error.message);
-            return { success: true, exists: false };
+            // Return error instead of assuming URL doesn't exist
+            return { 
+                success: false, 
+                exists: false, 
+                error: error.response?.data?.detail || error.message || 'Failed to check URL existence' 
+            };
         }
     }
 

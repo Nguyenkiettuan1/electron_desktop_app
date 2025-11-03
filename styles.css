@@ -57,7 +57,6 @@ body {
     cursor: pointer;
     font-size: 16px;
     font-weight: bold;
-    transition: background 0.3s ease;
 }
 
 .header-btn:hover {
@@ -94,24 +93,11 @@ body {
     max-width: 450px;
     margin: 0 auto;
     text-align: center;
-    background: rgba(255, 255, 255, 0.95);
+    background: white;
     padding: 50px;
     border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    position: relative;
-    overflow: hidden;
-}
-
-.login-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e9ecef;
 }
 
 .login-container h2 {
@@ -119,19 +105,6 @@ body {
     color: #333;
     font-size: 28px;
     font-weight: 700;
-    position: relative;
-}
-
-.login-container h2::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 50px;
-    height: 3px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 2px;
 }
 
 .login-form {
@@ -161,16 +134,12 @@ body {
     border-radius: 12px;
     font-size: 16px;
     background: #f8f9fa;
-    transition: all 0.3s ease;
-    position: relative;
 }
 
 .login-form .form-group input:focus {
     outline: none;
     border-color: #667eea;
-    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
     background: white;
-    transform: translateY(-2px);
 }
 
 .login-form .form-group input:valid {
@@ -186,37 +155,15 @@ body {
     border-radius: 12px;
     font-size: 16px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.login-form button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.login-form button:hover::before {
-    left: 100%;
 }
 
 .login-form button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 16px rgba(52, 152, 219, 0.3);
     background: #2980b9;
 }
 
 .login-form button:active {
-    transform: translateY(-1px);
+    background: #21618c;
 }
 
 /* Loading animation for login button */
@@ -244,44 +191,13 @@ body {
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-/* Login container entrance animation */
-.login-container {
-    animation: slideInUp 0.6s ease-out;
-}
-
-@keyframes slideInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Input focus animation */
-.login-form .form-group input:focus + label {
-    color: #667eea;
-    transform: translateY(-2px);
-}
-
 /* Success/Error states */
 .login-form .form-group.success input {
     border-color: #56ab2f;
-    background: rgba(86, 171, 47, 0.1);
 }
 
 .login-form .form-group.error input {
     border-color: #ff4757;
-    background: rgba(255, 71, 87, 0.1);
-    animation: shake 0.5s ease-in-out;
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
 }
 
 /* Fullscreen Error Popup - System Level Notification */
@@ -291,51 +207,67 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 99999;
-    animation: fadeInFullscreen 0.5s ease;
-    backdrop-filter: blur(5px);
 }
 
 .error-popup-content-fullscreen {
     background: white;
-    border-radius: 20px;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     max-width: 600px;
     width: 90%;
-    max-height: 80vh;
+    max-height: 85vh;
     overflow: hidden;
-    animation: slideInFullscreen 0.6s ease;
-    border: 3px solid #ff4757;
+    border: 2px solid #ff4757;
     position: relative;
-}
-
-.error-popup-content-fullscreen::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+    display: flex;
+    flex-direction: column;
 }
 
 .error-popup-header-fullscreen {
-    background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+    background: #ff4757;
     color: white;
-    padding: 30px;
+    padding: 20px;
     text-align: center;
     position: relative;
+    flex-shrink: 0;
+}
+
+.error-popup-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 24px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+}
+
+.error-popup-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.error-popup-close-btn:active {
+    opacity: 0.8;
 }
 
 .error-icon-fullscreen {
     font-size: 48px;
     display: block;
     margin-bottom: 15px;
-    animation: pulse 2s infinite;
 }
 
 .error-popup-header-fullscreen h2 {
@@ -346,9 +278,13 @@ body {
 }
 
 .error-popup-body-fullscreen {
-    padding: 40px;
+    padding: 30px 40px;
     color: #333;
     line-height: 1.6;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    max-height: calc(85vh - 250px); /* Reserve space for header and footer */
 }
 
 .error-message {
@@ -381,62 +317,37 @@ body {
 }
 
 .error-popup-footer-fullscreen {
-    padding: 30px;
+    padding: 20px 30px;
     background: #f8f9fa;
     border-top: 1px solid #e1e5e9;
     text-align: center;
+    flex-shrink: 0;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
 }
 
 .error-popup-btn-fullscreen {
-    background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+    background: #ff4757;
     color: white;
     border: none;
-    padding: 15px 40px;
-    border-radius: 12px;
-    font-size: 16px;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+    min-width: 140px;
 }
 
 .error-popup-btn-fullscreen:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255, 71, 87, 0.4);
+    background: #ff3742;
 }
 
 .error-popup-btn-fullscreen:active {
-    transform: translateY(0);
+    background: #e63946;
 }
 
-@keyframes fadeInFullscreen {
-    from { 
-        opacity: 0;
-        backdrop-filter: blur(0px);
-    }
-    to { 
-        opacity: 1;
-        backdrop-filter: blur(5px);
-    }
-}
-
-@keyframes slideInFullscreen {
-    from { 
-        opacity: 0;
-        transform: translateY(-50px) scale(0.9);
-    }
-    to { 
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-}
 
 /* Form Elements */
 .form-group {
@@ -456,14 +367,12 @@ body {
     border: 2px solid #e1e5e9;
     border-radius: 8px;
     font-size: 16px;
-    transition: all 0.3s ease;
     background: white;
 }
 
 .form-control:focus {
     outline: none;
     border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .form-row {
@@ -480,9 +389,6 @@ body {
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -510,12 +416,11 @@ body {
 }
 
 .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    opacity: 0.9;
 }
 
 .btn:active {
-    transform: translateY(0);
+    opacity: 0.8;
 }
 
 .btn:disabled {
@@ -790,7 +695,6 @@ body {
 
 .queue-item-status.uploading {
     background-color: #ffc107;
-    animation: pulse 1.5s infinite;
 }
 
 .queue-item-status.success {
@@ -799,6 +703,10 @@ body {
 
 .queue-item-status.error {
     background-color: #dc3545;
+}
+
+.queue-item-status.cancelled {
+    background-color: #6c757d;
 }
 
 .queue-item-info {
@@ -850,11 +758,6 @@ body {
     background-color: #e9ecef;
 }
 
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-}
 
 /* Notification */
 .notification {
@@ -863,18 +766,30 @@ body {
     right: 20px;
     background: white;
     border-radius: 10px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     z-index: 20000; /* Higher than screenshot popup (2000) */
     max-width: 400px;
-    animation: slideIn 0.3s ease;
+    max-height: calc(100vh - 40px); /* Ensure it doesn't exceed viewport height */
+    overflow-y: auto; /* Allow scrolling if content is too long */
+    overflow-x: hidden;
+    word-wrap: break-word; /* Break long words */
 }
 
 .notification-content {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     padding: 15px 20px;
     gap: 10px;
+    min-height: 0; /* Allow flex shrinking */
+}
+
+#notification-text {
+    flex: 1;
+    min-width: 0; /* Allow text to shrink */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.5;
 }
 
 .notification-actions {
@@ -891,12 +806,10 @@ body {
     font-size: 12px;
     cursor: pointer;
     color: #495057;
-    transition: all 0.2s;
 }
 
 .notification-btn:hover {
     background: rgba(108, 117, 125, 0.2);
-    border-color: rgba(108, 117, 125, 0.5);
 }
 
 .notification.success {
@@ -920,25 +833,145 @@ body {
     margin-left: 10px;
 }
 
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
+
+/* Responsive Design */
+/* For screens smaller than 1920x1080 (e.g., 1366x768, 1280x720, etc.) */
+@media (max-width: 1600px) {
+    .workflow-container {
+        gap: 20px;
     }
-    to {
-        transform: translateX(0);
-        opacity: 1;
+    
+    .form-row {
+        gap: 15px;
+    }
+    
+    .section {
+        padding: 25px;
+    }
+    
+    .workflow-step {
+        padding: 20px;
     }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 1366px) {
+    .app-main {
+        padding: 15px;
+    }
+    
+    .section {
+        padding: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .workflow-container {
+        gap: 15px;
+    }
+    
+    .workflow-step {
+        padding: 18px;
+    }
+    
+    .step-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    .form-group {
+        margin-bottom: 12px;
+    }
+    
+    .form-control {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+    
+    .header-content {
+        padding: 12px 18px;
+    }
+    
+    .header-content h1 {
+        font-size: 1.3rem;
+    }
+    
+    .user-info {
+        padding: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .user-info h3 {
+        font-size: 1.1rem;
+    }
+    
+    /* Notification adjustments for smaller screens */
+    .notification {
+        top: 10px;
+        right: 10px;
+        max-width: calc(100vw - 20px); /* Responsive width */
+        max-height: calc(100vh - 20px);
+        max-width: 350px; /* But limit to reasonable max */
+    }
+    
+    .notification-content {
+        padding: 12px 15px;
+        gap: 8px;
+    }
+    
+    #notification-text {
+        font-size: 13px;
+    }
+    
+    /* Error popup adjustments */
+    .error-popup-content-fullscreen {
+        max-width: 90%;
+        max-height: 90vh;
+    }
+    
+    .error-popup-body-fullscreen {
+        padding: 25px 30px;
+        max-height: calc(90vh - 220px);
+    }
+    
+    .error-popup-footer-fullscreen {
+        padding: 15px 25px;
+    }
+    
+    .error-popup-btn-fullscreen {
+        padding: 10px 24px;
+        font-size: 14px;
+        min-width: 120px;
+    }
+    
+    /* Queue adjustments */
+    .queue-item {
+        padding: 10px 12px;
+    }
+    
+    .queue-item-url {
+        font-size: 11px;
+    }
+    
+    /* Popup adjustments */
+    .popup-content {
+        max-width: 90%;
+        max-height: 85vh;
+    }
+}
+
+/* For very small screens (tablets, small laptops) */
+@media (max-width: 1024px) {
     .workflow-container {
         grid-template-columns: 1fr;
+        gap: 15px;
     }
     
     .form-row {
         grid-template-columns: 1fr;
+        gap: 12px;
     }
     
     .app-main {
@@ -946,7 +979,280 @@ body {
     }
     
     .section {
+        padding: 15px;
+        margin-bottom: 12px;
+    }
+    
+    .workflow-step {
+        padding: 15px;
+    }
+    
+    .step-header h3 {
+        font-size: 1rem;
+    }
+    
+    .step-header {
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .step-status {
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+    
+    .header-content {
+        padding: 12px 15px;
+    }
+    
+    .header-content h1 {
+        font-size: 1.2rem;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+    
+    .form-control {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+    
+    label {
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+    
+    /* Notification adjustments for tablets */
+    .notification {
+        top: 8px;
+        right: 8px;
+        max-width: calc(100vw - 16px);
+        max-width: 320px; /* Reasonable max */
+        max-height: calc(100vh - 16px);
+    }
+    
+    .notification-content {
+        padding: 12px 15px;
+        gap: 8px;
+    }
+    
+    #notification-text {
+        font-size: 13px;
+    }
+    
+    .notification-btn {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    
+    /* Dropdown adjustments */
+    .region-dropdown,
+    .sport-dropdown,
+    .signal-dropdown {
+        max-height: 200px;
+    }
+    
+    /* Storage folder section */
+    .storage-folder-section {
+        padding: 15px;
+    }
+    
+    /* Instructions section */
+    .instructions-section {
+        padding: 15px;
+        font-size: 13px;
+    }
+    
+    /* Screenshot preview */
+    #screenshot-image {
+        max-height: 250px;
+    }
+    
+    .preview-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .preview-actions .btn {
+        width: 100%;
+    }
+    
+    /* Popup adjustments */
+    .popup-content {
+        max-width: 95%;
+        max-height: 85vh;
+        padding: 15px;
+    }
+    
+    .error-popup-content-fullscreen {
+        max-width: 95%;
+        max-height: 90vh;
+    }
+    
+    .error-popup-header-fullscreen {
         padding: 20px;
+    }
+    
+    .error-popup-header-fullscreen h2 {
+        font-size: 24px;
+    }
+    
+    .error-popup-body-fullscreen {
+        padding: 20px 25px;
+        max-height: calc(90vh - 200px);
+    }
+    
+    .error-popup-footer-fullscreen {
+        padding: 15px 20px;
+        flex-wrap: wrap;
+    }
+    
+    .error-popup-btn-fullscreen {
+        padding: 10px 20px;
+        font-size: 13px;
+        min-width: 120px;
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    /* Queue adjustments */
+    .queue-header {
+        padding: 10px 12px;
+    }
+    
+    .queue-item {
+        padding: 8px 12px;
+    }
+    
+    .queue-item-url {
+        font-size: 11px;
+    }
+    
+    .queue-item-time {
+        font-size: 10px;
+    }
+}
+
+/* Mobile-like screens */
+@media (max-width: 768px) {
+    .workflow-container {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .app-main {
+        padding: 8px;
+    }
+    
+    .section {
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+    
+    .workflow-step {
+        padding: 12px;
+    }
+    
+    .step-header h3 {
+        font-size: 0.95rem;
+    }
+    
+    .step-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .btn {
+        padding: 8px 14px;
+        font-size: 12px;
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    .header-content {
+        padding: 10px 12px;
+    }
+    
+    .header-content h1 {
+        font-size: 1rem;
+    }
+    
+    .user-info {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .user-info > div {
+        width: 100%;
+    }
+    
+    .user-info button {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    .form-control {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+    
+    /* Buttons in form-row should stack */
+    .form-row .btn {
+        width: 100%;
+    }
+    
+    /* Dropdowns */
+    .region-dropdown,
+    .sport-dropdown,
+    .signal-dropdown {
+        max-height: 150px;
+        font-size: 13px;
+    }
+    
+    /* Notification adjustments for very small screens */
+    .notification {
+        top: 5px;
+        right: 5px;
+        left: 5px; /* Full width on very small screens */
+        max-width: calc(100vw - 10px);
+        max-height: calc(100vh - 10px);
+        border-radius: 8px;
+    }
+    
+    .notification-content {
+        padding: 10px 12px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .notification-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+    
+    #notification-text {
+        font-size: 12px;
+        width: 100%;
+    }
+    
+    /* Footer */
+    .app-footer {
+        padding: 8px 15px;
+        font-size: 12px;
+    }
+    
+    #hotkey-info {
+        font-size: 10px;
     }
 }
 
@@ -989,31 +1295,19 @@ body {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(5px);
 }
 
 .popup-content {
   position: relative;
   background: white;
   border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   max-width: 600px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
-  animation: popupSlideIn 0.3s ease-out;
 }
 
-@keyframes popupSlideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
 
 .popup-header {
   display: flex;
@@ -1133,7 +1427,6 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 10000;
-  animation: fadeIn 0.3s ease;
 }
 
 .error-popup-content {
@@ -1143,7 +1436,6 @@ body {
   max-width: 400px;
   width: 90%;
   overflow: hidden;
-  animation: slideIn 0.3s ease;
 }
 
 .error-popup-header {
@@ -1199,28 +1491,12 @@ body {
   background: #ff3742;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideIn {
-  from { 
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
 /* UI Improvements */
 .main-interface {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin: 20px;
   padding: 30px;
 }
@@ -1443,7 +1719,6 @@ body {
   border-radius: 10px;
   padding: 20px;
   margin-top: 15px;
-  animation: slideIn 0.3s ease-out;
 }
 
 .create-signal-header {
@@ -1529,19 +1804,8 @@ body {
   width: 90%;
   max-height: 85vh;
   overflow: hidden;
-  animation: settingsSlideIn 0.3s ease-out;
 }
 
-@keyframes settingsSlideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
 
 .settings-header {
   display: flex;
@@ -1666,7 +1930,6 @@ body {
 .shortcut-input.recording {
   border-color: #e74c3c;
   background: #fff5f5;
-  animation: pulse 1s infinite;
 }
 
 .btn-reset {
@@ -1709,9 +1972,4 @@ body {
   background: #e7f3ff;
   border-left: 3px solid #3498db;
   border-radius: 4px;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
 }

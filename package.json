@@ -20,7 +20,8 @@
     "release:major": "node release.js major",
     "release-portable:patch": "node release-portable.js patch",
     "release-portable:minor": "node release-portable.js minor",
-    "release-portable:major": "node release-portable.js major"
+    "release-portable:major": "node release-portable.js major",
+    "delete-empty-tags": "node delete-empty-tags.js"
   },
   "keywords": [
     "test-automation",

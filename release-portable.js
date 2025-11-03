@@ -37,6 +37,16 @@ function exec(command, silent = false) {
     }
 }
 
+function execSafe(command, silent = false) {
+    try {
+        const output = execSync(command, { encoding: 'utf8' });
+        if (!silent) console.log(output);
+        return { success: true, output: output.trim() };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
 function getPackageJson() {
     return JSON.parse(fs.readFileSync('package.json', 'utf8'));
 }
@@ -103,6 +113,26 @@ function performRelease(pkg, oldVersion, newVersion) {
         log('\n📝 Step 2: Git commit and tag...', 'cyan');
         exec('git add package.json');
         exec(`git commit -m "Release v${newVersion}"`);
+        
+        // Check if tag already exists and delete it
+        const tagCheck = execSafe(`git tag -l v${newVersion}`, true);
+        if (tagCheck.success && tagCheck.output && tagCheck.output.includes(`v${newVersion}`)) {
+            log(`  ⚠️  Tag v${newVersion} already exists, deleting old tag...`, 'yellow');
+            
+            // Delete local tag
+            const deleteLocal = execSafe(`git tag -d v${newVersion}`, true);
+            if (deleteLocal.success) {
+                log(`  ✅ Deleted local tag v${newVersion}`, 'green');
+            }
+            
+            // Try to delete from remote
+            const deleteRemote = execSafe(`git push origin :refs/tags/v${newVersion}`, true);
+            if (deleteRemote.success) {
+                log(`  ✅ Deleted remote tag v${newVersion}`, 'green');
+            }
+        }
+        
+        // Create new tag (or recreate if was deleted)
         exec(`git tag v${newVersion}`);
         exec('git push origin main --tags');
         log('✅ Git updated', 'green');
@@ -155,6 +185,23 @@ function performRelease(pkg, oldVersion, newVersion) {
             // Step 6: Create GitHub Release
             log('\n📝 Step 6: Creating GitHub Release...', 'cyan');
             
+            // Check if GitHub CLI is authenticated
+            const ghAuthCheck = execSafe('gh auth status', true);
+            if (!ghAuthCheck.success) {
+                log('⚠️  GitHub CLI not authenticated', 'yellow');
+                log('Please run: gh auth login', 'yellow');
+                log('\n📝 Manual upload instructions:', 'cyan');
+                log(`  1. Go to: https://github.com/Nguyenkiettuan1/phanlaw-capture/releases/new`, 'yellow');
+                log(`  2. Tag: v${newVersion}`, 'yellow');
+                log(`  3. Title: Version ${newVersion} - Portable`, 'yellow');
+                log(`  4. Upload files:`, 'yellow');
+                log(`     - ${zipFile}`, 'yellow');
+                log(`     - ${ymlFile}`, 'yellow');
+                log(`  5. Release notes:`, 'yellow');
+                log(`     ${releaseNotes.replace(/\n/g, '\n     ')}`, 'yellow');
+                return; // Continue anyway, files are ready
+            }
+            
             try {
                 const releaseCmd = `gh release create v${newVersion} ` +
                     `"${zipFile}" ` +
@@ -165,7 +212,7 @@ function performRelease(pkg, oldVersion, newVersion) {
                 exec(releaseCmd);
                 
                 log('\n🎉 Release completed!', 'green');
-                log(`🔗 https://github.com/Nguyenkiettuan1/electron_desktop_app/releases/tag/v${newVersion}`, 'blue');
+                log(`🔗 https://github.com/Nguyenkiettuan1/phanlaw-capture/releases/tag/v${newVersion}`, 'blue');
                 log('\n📦 Users can now:', 'cyan');
                 log('  1. Download zip file', 'yellow');
                 log('  2. Extract and run', 'yellow');
@@ -174,7 +221,7 @@ function performRelease(pkg, oldVersion, newVersion) {
             } catch (error) {
                 log('\n❌ GitHub Release failed', 'red');
                 log('Create manually:', 'yellow');
-                log(`  1. Go to: https://github.com/Nguyenkiettuan1/electron_desktop_app/releases/new`, 'yellow');
+                log(`  1. Go to: https://github.com/Nguyenkiettuan1/phanlaw-capture/releases/new`, 'yellow');
                 log(`  2. Tag: v${newVersion}`, 'yellow');
                 log(`  3. Upload: ${zipFile} and ${ymlFile}`, 'yellow');
             }
@@ -188,7 +235,11 @@ function performRelease(pkg, oldVersion, newVersion) {
         pkg.version = oldVersion;
         savePackageJson(pkg);
         exec('git reset --hard HEAD~1', true);
-        exec(`git tag -d v${newVersion}`, true);
+        try {
+            exec(`git tag -d v${newVersion}`, true);
+        } catch (error) {
+            // Tag might not exist, ignore
+        }
         
         log('✅ Rolled back', 'green');
         process.exit(1);

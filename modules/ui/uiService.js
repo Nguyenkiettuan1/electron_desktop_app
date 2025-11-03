@@ -310,7 +310,8 @@ class UiService {
             itemEl.dataset.itemId = item.id;
             
             const statusClass = item.status === 'uploading' ? 'uploading' : 
-                              item.status === 'success' ? 'success' : 'error';
+                              item.status === 'success' ? 'success' : 
+                              item.status === 'cancelled' ? 'cancelled' : 'error';
             
             itemEl.innerHTML = `
                 <div class="queue-item-status ${statusClass}"></div>
@@ -320,6 +321,7 @@ class UiService {
                     <div class="queue-item-time">${item.timestamp.toLocaleTimeString()}</div>
                 </div>
                 <div class="queue-item-actions">
+                    ${item.status === 'error' && item.detectedLinkId ? '<button class="queue-item-action queue-retry-btn" title="Retry Upload">🔄</button>' : ''}
                     ${item.status === 'error' ? '<button class="queue-item-action" title="View Error">⚠️</button>' : ''}
                     ${item.status === 'success' ? '<button class="queue-item-action" title="View Image">🔗</button>' : ''}
                     <button class="queue-item-action" title="Remove">🗑️</button>
@@ -337,14 +339,24 @@ class UiService {
                     this.showErrorDetails(item);
                 } else if (item.status === 'success') {
                     this.showImageUrl(item);
+                } else if (item.status === 'cancelled') {
+                    // Cancelled items - just show info, no error popup
+                    console.log('Item cancelled:', item);
                 }
             });
             
             // Action button handlers
+            const retryBtn = itemEl.querySelector('.queue-retry-btn');
             const errorBtn = itemEl.querySelector('[title="View Error"]');
             const imageBtn = itemEl.querySelector('[title="View Image"]');
             const removeBtn = itemEl.querySelector('[title="Remove"]');
             
+            if (retryBtn) {
+                retryBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.retryUpload(item.id);
+                });
+            }
             if (errorBtn) {
                 errorBtn.addEventListener('click', () => this.showErrorDetails(item));
             }
@@ -452,12 +464,48 @@ class UiService {
             const { ipcRenderer } = require('electron');
             const urlCheckResult = await ipcRenderer.invoke('check-url-exists', { url, sportId });
             
-            if (urlCheckResult.success && urlCheckResult.exists) {
-                console.log('❌ URL already exists in database');
+            // Check if check failed (network error, missing token, etc.)
+            if (!urlCheckResult.success) {
+                console.log('❌ Failed to check URL existence:', urlCheckResult.error);
                 queueItem.status = 'error';
-                queueItem.error = 'URL already exists in database! Please navigate to a different URL and try again.';
+                queueItem.error = `Cannot check URL existence: ${urlCheckResult.error || 'Unknown error'}. Please check your connection and try again.`;
                 this.updateQueueDisplay();
                 this.showErrorPopupWithDetails(queueItem);
+                return;
+            }
+            
+            // Check if URL already exists
+            if (urlCheckResult.exists) {
+                console.log('⚠️ URL already exists in database');
+                
+                // Show popup asking user if they want to continue with existing detected link
+                const shouldContinue = await this.showContinueWithExistingLinkPopup(queueItem);
+                
+                if (!shouldContinue) {
+                    // User chose to cancel - not an error, just cancelled
+                    queueItem.status = 'cancelled';
+                    queueItem.error = 'Upload cancelled - URL already exists in database.';
+                    this.updateQueueDisplay();
+                    return;
+                }
+                
+                // User chose to continue - call check-exists again to get fresh ID, then upload
+                console.log('✅ User chose to continue - checking URL again to get detected link ID...');
+                const freshCheckResult = await ipcRenderer.invoke('check-url-exists', { url, sportId });
+                
+                if (!freshCheckResult.success || !freshCheckResult.exists || !freshCheckResult.detectedLinkId) {
+                    console.log('❌ Failed to get detected link ID from check-exists');
+                    queueItem.status = 'error';
+                    queueItem.error = 'Failed to get detected link ID. Please try again.';
+                    this.updateQueueDisplay();
+                    this.showErrorPopupWithDetails(queueItem);
+                    return;
+                }
+                
+                console.log('✅ Got detected link ID from check-exists:', freshCheckResult.detectedLinkId);
+                queueItem.detectedLinkId = freshCheckResult.detectedLinkId;
+                // Skip to upload step (skip create detected link)
+                await this.uploadScreenshotWithExistingLink(queueItem);
                 return;
             }
             
@@ -483,17 +531,39 @@ class UiService {
             
             console.log('✅ Detected link created:', linkResult.data);
             
-            // Step 3: Skip backup for speed (file already preserved in screenshots folder)
+            // Save detectedLinkId to queueItem for retry functionality
+            queueItem.detectedLinkId = linkResult.data.id;
+            
+            // Continue with upload (uploadScreenshotWithExistingLink handles success/error)
+            await this.uploadScreenshotWithExistingLink(queueItem);
+        } catch (error) {
+            // Error - update queue item
+            queueItem.status = 'error';
+            queueItem.error = 'Failed to upload: ' + error.message;
+            this.updateQueueDisplay();
+            
+            // Show error popup with URL and details
+            this.showErrorPopupWithDetails(queueItem);
+            console.log('❌ Upload error:', error);
+        }
+    }
+
+    async uploadScreenshotWithExistingLink(queueItem) {
+        const { filePath, detectedLinkId, bucketName } = queueItem;
+        
+        try {
+            // Step 1: Skip backup for speed (file already preserved in screenshots folder)
             console.log('📁 File already preserved in screenshots folder:', filePath);
             
-            // Step 4: Upload screenshot
+            // Step 2: Upload screenshot with existing detected_link_id
             const uploadData = {
                 filePath: filePath,
-                detectedLinkId: linkResult.data.id,
+                detectedLinkId: detectedLinkId,
                 bucketName: bucketName
             };
             
             console.log('📤 Uploading screenshot with data:', uploadData);
+            const { ipcRenderer } = require('electron');
             const uploadResult = await ipcRenderer.invoke('upload-screenshot', uploadData);
             
             if (uploadResult.success) {
@@ -509,10 +579,7 @@ class UiService {
                 console.log('📁 Original file preserved:', filePath);
                 
                 // Auto-minimize logic:
-                // - If window was visible before screenshot → KEEP visible (user was using app normally)
-                // - If window was hidden before screenshot (from tray) → MINIMIZE back to tray immediately
                 if (!this.wasVisibleBeforeScreenshot) {
-                    // User triggered from tray, minimize back after upload
                     const { ipcRenderer } = require('electron');
                     ipcRenderer.invoke('minimize-to-tray').then(result => {
                         if (result && result.minimized) {
@@ -544,7 +611,203 @@ class UiService {
         }
     }
 
+    async showContinueWithExistingLinkPopup(queueItem) {
+        return new Promise((resolve) => {
+            // Remove existing popup if any
+            const existingPopup = document.querySelector('.continue-existing-link-popup');
+            if (existingPopup) {
+                existingPopup.remove();
+            }
+            
+            // Create popup
+            const popup = document.createElement('div');
+            popup.className = 'continue-existing-link-popup error-popup-fullscreen';
+            popup.innerHTML = `
+                <div class="error-popup-content-fullscreen">
+                    <div class="error-popup-header-fullscreen">
+                        <span class="error-icon-fullscreen">⚠️</span>
+                        <h2>URL Already Exists</h2>
+                        <button class="error-popup-close-btn" title="Close (ESC)">✖</button>
+                    </div>
+                    <div class="error-popup-body-fullscreen">
+                        <p class="error-message">This URL already exists in the database.</p>
+                        <div class="error-details">
+                            <p>🔗 <strong>URL:</strong> ${queueItem.url}</p>
+                            <p>📁 <strong>Bucket:</strong> ${queueItem.bucketName}</p>
+                            <p>📝 <strong>What would you like to do?</strong></p>
+                            <p>You can continue and upload the screenshot to the existing detected link (e.g., if you closed the app before uploading), or cancel this upload.</p>
+                        </div>
+                    </div>
+                    <div class="error-popup-footer-fullscreen">
+                        <button class="error-popup-btn-fullscreen continue-existing-link-btn" style="background: #28a745; color: white;">
+                            Continue & Upload
+                        </button>
+                        <button class="error-popup-btn-fullscreen cancel-existing-link-btn" style="background: #dc3545; color: white;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(popup);
+            
+            // IPC handler for close-error-popup message (declare before closePopup)
+            let ipcEscHandler = null;
+            
+            // Function to close popup
+            const closePopup = () => {
+                if (popup.parentNode) {
+                    popup.remove();
+                    if (ipcEscHandler) {
+                        ipcRenderer.removeListener('close-error-popup', ipcEscHandler);
+                        ipcEscHandler = null;
+                    }
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            
+            // Continue button handler
+            const continueBtn = popup.querySelector('.continue-existing-link-btn');
+            continueBtn.addEventListener('click', () => {
+                closePopup();
+                resolve(true); // User chose to continue
+            });
+            
+            // Cancel button handler
+            const cancelBtn = popup.querySelector('.cancel-existing-link-btn');
+            cancelBtn.addEventListener('click', () => {
+                closePopup();
+                resolve(false); // User chose to cancel
+            });
+            
+            // Close button handler
+            const closeBtn = popup.querySelector('.error-popup-close-btn');
+            closeBtn.addEventListener('click', () => {
+                closePopup();
+                resolve(false); // Close = cancel
+            });
+            
+            // ESC key handler
+            const escHandler = (e) => {
+                if (e.key === 'Escape' && popup.parentNode) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closePopup();
+                    resolve(false); // ESC = cancel
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+            
+            // Set up IPC handler for close-error-popup message
+            ipcEscHandler = () => {
+                closePopup();
+                resolve(false); // IPC close = cancel
+            };
+            ipcRenderer.on('close-error-popup', ipcEscHandler);
+        });
+    }
+
+    async retryUpload(queueItemId) {
+        const queueItem = this.uploadQueue.find(item => item.id === queueItemId);
+        if (!queueItem) {
+            console.error('Queue item not found:', queueItemId);
+            return;
+        }
+        
+        // Check if detectedLinkId exists (only retry if detected link was created)
+        if (!queueItem.detectedLinkId) {
+            this.showNotification('Cannot retry: No detected link ID. Please upload again.', 'error');
+            return;
+        }
+        
+        // Check if file still exists - use IPC to check file exists (more reliable)
+        let filePath = queueItem.filePath;
+        
+        // Check file exists via IPC (safer than direct fs access in renderer)
+        const fileExistsResult = await ipcRenderer.invoke('check-file-exists', filePath);
+        
+        if (!fileExistsResult.exists) {
+            console.log('⚠️ Original file not found, searching in screenshots folder...');
+            
+            // Get screenshots folder path via IPC
+            const screenshotsPathResult = await ipcRenderer.invoke('get-screenshots-path');
+            if (!screenshotsPathResult.success || !screenshotsPathResult.path) {
+                this.showNotification('❌ Cannot retry: Screenshots folder not found.', 'error');
+                return;
+            }
+            
+            const screenshotsDir = screenshotsPathResult.path;
+            const findFileResult = await ipcRenderer.invoke('find-file-in-screenshots', {
+                fileName: require('path').basename(filePath),
+                screenshotsDir: screenshotsDir
+            });
+            
+            if (findFileResult.success && findFileResult.filePath) {
+                filePath = findFileResult.filePath;
+                console.log('✅ Found file in screenshots folder:', filePath);
+            } else {
+                this.showNotification('❌ Cannot retry: Screenshot file not found in screenshots folder.', 'error');
+                return;
+            }
+        }
+        
+        // Update queue item status
+        queueItem.status = 'uploading';
+        queueItem.error = null;
+        queueItem.filePath = filePath; // Update filePath in case it was found in different location
+        this.updateQueueDisplay();
+        
+        // Retry upload - only upload, no need to create detected link
+        try {
+            console.log('🔄 Retrying upload for detected link ID:', queueItem.detectedLinkId);
+            
+            const uploadData = {
+                filePath: filePath,
+                detectedLinkId: queueItem.detectedLinkId,
+                bucketName: queueItem.bucketName
+            };
+            
+            console.log('📤 Retrying upload with data:', uploadData);
+            const uploadResult = await ipcRenderer.invoke('upload-screenshot', uploadData);
+            
+            if (uploadResult.success) {
+                // Success - update queue item
+                queueItem.status = 'success';
+                queueItem.imageUrl = uploadResult.data?.image_url || uploadResult.imageUrl;
+                this.updateQueueDisplay();
+                
+                // Show success notification
+                this.showNotification(`✅ Retry successful! Screenshot uploaded to folder: ${queueItem.bucketName}!`, 'success');
+                console.log('✅ Retry upload completed successfully');
+            } else {
+                // Error - update queue item
+                queueItem.status = 'error';
+                queueItem.error = 'Retry failed: ' + uploadResult.error;
+                this.updateQueueDisplay();
+                
+                // Show error popup with details
+                this.showErrorPopupWithDetails(queueItem);
+                console.log('❌ Retry upload failed:', uploadResult.error);
+            }
+        } catch (error) {
+            // Error - update queue item
+            queueItem.status = 'error';
+            queueItem.error = 'Retry failed: ' + error.message;
+            this.updateQueueDisplay();
+            
+            // Show error popup with details
+            this.showErrorPopupWithDetails(queueItem);
+            console.log('❌ Retry upload error:', error);
+        }
+    }
+
     showErrorPopupWithDetails(queueItem) {
+        // Remove existing error popup if any
+        const existingPopup = document.querySelector('.error-popup-fullscreen');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+        
         // Create error popup with URL and details
         const popup = document.createElement('div');
         popup.className = 'error-popup-fullscreen';
@@ -553,6 +816,7 @@ class UiService {
                 <div class="error-popup-header-fullscreen">
                     <span class="error-icon-fullscreen">❌</span>
                     <h2>Upload Failed!</h2>
+                    <button class="error-popup-close-btn" title="Close (ESC)">✖</button>
                 </div>
                 <div class="error-popup-body-fullscreen">
                     <p class="error-message">${queueItem.error}</p>
@@ -566,10 +830,10 @@ class UiService {
                     </div>
                 </div>
                 <div class="error-popup-footer-fullscreen">
-                    <button class="error-popup-btn-fullscreen" onclick="this.closest('.error-popup-fullscreen').remove()">
+                    <button class="error-popup-btn-fullscreen error-popup-close-action">
                         Got it! I'll try again
                     </button>
-                    <button class="error-popup-btn-fullscreen error-copy-url" onclick="navigator.clipboard.writeText('${queueItem.url}'); this.textContent='URL Copied!'">
+                    <button class="error-popup-btn-fullscreen error-copy-url">
                         Copy URL
                     </button>
                 </div>
@@ -578,10 +842,70 @@ class UiService {
         
         document.body.appendChild(popup);
         
+        // IPC handler for close-error-popup message from main process (declare before closePopup)
+        let ipcEscHandler = null;
+        
+        // Function to close popup
+        const closePopup = () => {
+            if (popup.parentNode) {
+                popup.remove();
+                // Clean up IPC listener
+                if (ipcEscHandler) {
+                    ipcRenderer.removeListener('close-error-popup', ipcEscHandler);
+                    ipcEscHandler = null;
+                }
+            }
+        };
+        
+        // Close button handler
+        const closeBtn = popup.querySelector('.error-popup-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closePopup);
+        }
+        
+        // Close action button handler
+        const closeActionBtn = popup.querySelector('.error-popup-close-action');
+        if (closeActionBtn) {
+            closeActionBtn.addEventListener('click', closePopup);
+        }
+        
+        // Copy URL button handler
+        const copyUrlBtn = popup.querySelector('.error-copy-url');
+        if (copyUrlBtn) {
+            copyUrlBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(queueItem.url).then(() => {
+                    copyUrlBtn.textContent = 'URL Copied!';
+                    setTimeout(() => {
+                        copyUrlBtn.textContent = 'Copy URL';
+                    }, 2000);
+                });
+            });
+        }
+        
+        // ESC key handler (local) - backup in case global handler doesn't catch it
+        const escHandler = (e) => {
+            if (e.key === 'Escape' && popup.parentNode) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Local ESC handler - closing error popup');
+                closePopup();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+        
+        // Set up IPC handler for close-error-popup message from main process
+        ipcEscHandler = () => {
+            console.log('IPC close-error-popup received - closing error popup');
+            closePopup();
+        };
+        ipcRenderer.on('close-error-popup', ipcEscHandler);
+        
         // Auto remove after 15 seconds
         setTimeout(() => {
             if (popup.parentNode) {
-                popup.remove();
+                closePopup();
+                document.removeEventListener('keydown', escHandler);
             }
         }, 15000);
     }

@@ -19,6 +19,7 @@ class TestAutomationApp {
         this.pythonServer = null;
         this.isDev = process.argv.includes('--dev');
         this.currentSessionData = null; // Store session data
+        this.isProcessingScreenshot = false; // Flag to prevent spam screenshots
         
         // Initialize services
         this.apiService = new ApiService();
@@ -33,8 +34,8 @@ class TestAutomationApp {
         this.mainWindow = new BrowserWindow({
             width: 1400,
             height: 900,
-            minWidth: 1200,
-            minHeight: 800,
+            minWidth: 800,
+            minHeight: 600,
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false,
@@ -188,7 +189,39 @@ class TestAutomationApp {
     }
 
     setupAutoUpdater() {
-        // Configure auto-updater
+        // Configure auto-updater for GitHub releases
+        // electron-updater works with GitHub releases automatically
+        // It looks for latest.yml in GitHub releases
+        
+        // Check if running in development
+        if (this.isDev) {
+            console.log('⏭️  Auto-updater disabled in development mode');
+            return;
+        }
+        
+        // Configure GitHub provider
+        // electron-updater will automatically use package.json build.publish config
+        // But we can also set it manually for clarity
+        const updateConfig = {
+            provider: 'github',
+            owner: 'Nguyenkiettuan1',
+            repo: 'phanlaw-capture'
+        };
+        
+        console.log('📦 Configuring auto-updater...');
+        console.log(`   Provider: ${updateConfig.provider}`);
+        console.log(`   Repository: ${updateConfig.owner}/${updateConfig.repo}`);
+        
+        // Note: electron-updater automatically detects GitHub provider from package.json
+        // But we set it explicitly here for portable builds
+        try {
+            autoUpdater.setFeedURL(updateConfig);
+        } catch (error) {
+            console.warn('⚠️  Could not set update feed URL:', error.message);
+            // Continue anyway, electron-updater might still work with package.json config
+        }
+        
+        // Configure auto-updater behavior
         autoUpdater.autoDownload = false; // Don't auto-download, ask user first
         autoUpdater.autoInstallOnAppQuit = true;
 
@@ -385,6 +418,21 @@ class TestAutomationApp {
         try {
             console.log('Taking screenshot...');
             
+            // Check if popup is currently visible - prevent screenshot if popup is open
+            const isPopupVisible = await this.checkPopupVisible();
+            if (isPopupVisible) {
+                console.log('⚠️ Screenshot popup is open, cannot take new screenshot. Please close the popup first (ESC or Upload/Cancel).');
+                return;
+            }
+            
+            // Check if already processing a screenshot - prevent spam
+            if (this.isProcessingScreenshot) {
+                console.log('⚠️ Screenshot is already being processed, please wait...');
+                return;
+            }
+            
+            this.isProcessingScreenshot = true;
+            
             // Get current URL from renderer process first
             const currentUrl = await this.getCurrentUrlFromRenderer();
             
@@ -396,23 +444,7 @@ class TestAutomationApp {
                 return;
             }
             
-            // Get current session data to check URL with sport context
-            const sessionData = this.getCurrentSessionData();
-            const sportId = sessionData?.sportId;
-            
-            // Check if URL already exists in database (with sport context)
-            console.log('🔍 Checking URL existence before screenshot:', { url: currentUrl, sportId });
-            const urlCheckResult = await this.apiService.checkUrlExists(currentUrl, sportId);
-            
-            if (urlCheckResult.success && urlCheckResult.exists) {
-                console.log('❌ URL already exists in database');
-                this.mainWindow.webContents.send('url-already-exists', {
-                    message: 'URL already exists in database! Please navigate to a different URL and try again.'
-                });
-                return;
-            }
-            
-            console.log('✅ URL is new, proceeding with screenshot');
+            console.log('✅ Proceeding with screenshot - URL check will be done when creating detected link');
             
             // Remember if window was visible before screenshot
             const wasVisibleBeforeScreenshot = this.mainWindow.isVisible();
@@ -461,6 +493,28 @@ class TestAutomationApp {
             this.mainWindow.show();
             this.mainWindow.focus();
             dialog.showErrorBox('Screenshot Error', 'Failed to take screenshot: ' + error.message);
+        } finally {
+            // Reset flag after screenshot completes
+            this.isProcessingScreenshot = false;
+        }
+    }
+    
+    async checkPopupVisible() {
+        try {
+            if (!this.mainWindow || !this.mainWindow.webContents) {
+                return false;
+            }
+            // Send message to renderer to check popup visibility
+            const result = await this.mainWindow.webContents.executeJavaScript(`
+                (function() {
+                    const popup = document.getElementById('screenshot-popup');
+                    return popup && !popup.classList.contains('hidden');
+                })();
+            `);
+            return result === true;
+        } catch (error) {
+            console.error('Error checking popup visibility:', error);
+            return false;
         }
     }
 
@@ -780,6 +834,67 @@ ipcMain.handle('open-file', async (event, filePath) => {
         return { success: true };
     } catch (error) {
         console.error('Failed to open file:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Check file exists handler
+ipcMain.handle('check-file-exists', async (event, filePath) => {
+    try {
+        const fs = require('fs');
+        const exists = fs.existsSync(filePath);
+        return { exists: exists };
+    } catch (error) {
+        console.error('Failed to check file existence:', error);
+        return { exists: false, error: error.message };
+    }
+});
+
+// Get screenshots folder path handler
+ipcMain.handle('get-screenshots-path', async (event) => {
+    try {
+        const path = require('path');
+        const projectDir = process.cwd();
+        const screenshotsDir = path.join(projectDir, 'screenshots');
+        return { success: true, path: screenshotsDir };
+    } catch (error) {
+        console.error('Failed to get screenshots path:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Find file in screenshots folder handler
+ipcMain.handle('find-file-in-screenshots', async (event, { fileName, screenshotsDir }) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        
+        if (!fs.existsSync(screenshotsDir)) {
+            return { success: false, error: 'Screenshots folder does not exist' };
+        }
+        
+        // First try exact filename match
+        const exactPath = path.join(screenshotsDir, fileName);
+        if (fs.existsSync(exactPath)) {
+            return { success: true, filePath: exactPath };
+        }
+        
+        // Try to find by pattern matching (domain prefix)
+        const files = fs.readdirSync(screenshotsDir);
+        const domainPrefix = fileName.split('_')[0];
+        const matchingFile = files.find(f => {
+            // Match by exact filename or by domain prefix
+            return f === fileName || f.startsWith(domainPrefix + '_');
+        });
+        
+        if (matchingFile) {
+            const foundPath = path.join(screenshotsDir, matchingFile);
+            return { success: true, filePath: foundPath };
+        }
+        
+        return { success: false, error: 'File not found in screenshots folder' };
+    } catch (error) {
+        console.error('Failed to find file in screenshots:', error);
         return { success: false, error: error.message };
     }
 });

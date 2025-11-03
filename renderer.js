@@ -1138,30 +1138,26 @@ class TestAutomationDesktopApp {
             const popup = document.getElementById('screenshot-popup');
             const isPopupVisible = popup && !popup.classList.contains('hidden');
             
-            // Check if error popup is visible
-            const errorPopup = document.querySelector('.error-popup-fullscreen');
-            const isErrorPopupVisible = errorPopup !== null;
-            
-            // Debug logging only for Escape key
-            if (e.key === 'Escape') {
-                console.log('ESC key pressed - checking popups:', {
-                    isPopupVisible,
-                    isErrorPopupVisible,
-                    popupElement: popup,
-                    errorPopupElement: errorPopup,
-                    allErrorPopups: document.querySelectorAll('.error-popup-fullscreen'),
-                    allErrorPopupsLength: document.querySelectorAll('.error-popup-fullscreen').length,
-                    documentBody: document.body.innerHTML.includes('error-popup-fullscreen')
-                });
-            }
+            // Check if error popup is visible - always check fresh from DOM
+            const allErrorPopups = document.querySelectorAll('.error-popup-fullscreen');
+            const isErrorPopupVisible = allErrorPopups.length > 0;
             
             // Handle Escape key - prioritize error popup if both are visible
             if (e.key === 'Escape') {
                 if (isErrorPopupVisible) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Escape pressed - Closing error popup');
-                    errorPopup.remove();
+                    console.log('Escape pressed - Closing error popup(s)');
+                    // Find all error popups and remove them
+                    allErrorPopups.forEach(errorPopup => {
+                        console.log('Removing error popup:', errorPopup);
+                        errorPopup.remove();
+                    });
+                    // Double check and remove any remaining
+                    const remainingPopups = document.querySelectorAll('.error-popup-fullscreen');
+                    if (remainingPopups.length > 0) {
+                        remainingPopups.forEach(p => p.remove());
+                    }
                     return;
                 } else if (isPopupVisible) {
                     e.preventDefault();
@@ -1742,33 +1738,8 @@ class TestAutomationDesktopApp {
             });
         }
         
-        // Check if URL already exists in database (with sport context)
-        try {
-            // Get current sport ID from session
-            const sessionData = this.sessionService.getSessionData();
-            const sportId = sessionData?.sportId;
-            
-            console.log('🔍 Checking URL existence:', { url, sportId });
-            
-            if (!sportId) {
-                console.warn('⚠️ No sport ID available, skipping URL check');
-                this.showNotification('⚠️ Please start a session first before checking URL.', 'warning');
-                return;
-            }
-            
-            const urlCheckResult = await ipcRenderer.invoke('check-url-exists', { url, sportId });
-            
-            if (urlCheckResult.success && urlCheckResult.exists) {
-                console.log('❌ URL already exists in database for this sport!');
-                this.showNotification('⚠️ URL already exists in this sport! Please use a different URL.', 'error');
-            } else {
-                console.log('✅ URL is new for this sport, ready for screenshot');
-                this.showNotification('✅ URL is new, ready for screenshot!', 'success');
-            }
-        } catch (error) {
-            console.log('❌ Error checking URL existence:', error);
-            this.showNotification('⚠️ Could not check URL existence. Proceed with caution.', 'info');
-        }
+        // URL check will be done only when creating detected link (during upload)
+        // No need to check here to avoid spam requests
     }
 
     showScreenshotPopup(data) {
